@@ -6,7 +6,8 @@ Frequency sidechaining plugin
 
 `cargo xtask bundle freqchain --release`
 
-> [!NOTE] `xtask` is an aliased command in `.cargo/config`
+> [!NOTE]  
+> `xtask` is an aliased command in `.cargo/config`
 
 ## Todo
 
