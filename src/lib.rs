@@ -297,14 +297,19 @@ impl Plugin for FreqChain {
 
         // TODO: update input signal histogram here
 
-        // Subtract the sidechain spectrum from the input spectrum
-        let mut result_spectrum: Vec<Vec<Complex<f32>>> = spectrum.iter().zip(sidechain_spectrum)
-            .map(|(channel, sidechain_channel)| {
-                channel.iter().zip(sidechain_channel)
-                    .map(|(sample, sidechain_sample)| sample - sidechain_sample)
-                    .collect()
-            })
-            .collect();
+        // Subtract the magnitudes of the input spectrum by the sidechain spectrum, retaining the input phase
+        let mut result_spectrum: Vec<Vec<Complex<f32>>> =
+            spectrum.iter().zip(sidechain_spectrum).map(|(channel, sidechain_channel)| {
+                channel.iter().zip(sidechain_channel).map(|(sample, sidechain_sample)| {
+                    let sample_magnitude = sample.abs();
+                    let sidechain_sample_magnitude = sidechain_sample.abs();
+
+                    let magnitude = std::cmp::max(sample_magnitude - sidechain_sample_magnitude, 0.0);
+                    let phase = sample.arg();
+
+                    magnitude * Complex::cis(phase)
+                }).collect()
+            }).collect();
 
         // TODO: update output signal histogram here
 
