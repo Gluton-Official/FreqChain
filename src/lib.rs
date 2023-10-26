@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::iter::zip;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -203,11 +202,9 @@ impl Plugin for FreqChain {
 
         // Create an input and output vector per channel for the FFT
         let mut sidechain_fft_input: Vec<Vec<f32>> = (0..channels)
-            .map(|_| self.sidechain_fft_plan.as_mut().unwrap().make_input_vec())
-            .collect();
+            .map(|_| self.sidechain_fft_plan.as_mut().unwrap().make_input_vec()).collect();
         let mut sidechain_spectrum: Vec<Vec<Complex<f32>>> = (0..channels)
-            .map(|_| self.sidechain_fft_plan.as_mut().unwrap().make_output_vec())
-            .collect();
+            .map(|_| self.sidechain_fft_plan.as_mut().unwrap().make_output_vec()).collect();
 
         // Read sidechain buffer
         for (sample_index, sidechain_channel_samples) in sidechain_buffer.iter_samples().enumerate() {
@@ -245,9 +242,7 @@ impl Plugin for FreqChain {
 
         // Compute the FFT for each of the sidechain channels
         for (channel_number, sidechain_fft_channel_input) in sidechain_fft_input.iter_mut().enumerate() {
-            if let Err(e) = self.sidechain_fft_plan.as_mut().unwrap()
-                .process(sidechain_fft_channel_input, &mut sidechain_spectrum[channel_number])
-            {
+            if let Err(e) = self.sidechain_fft_plan.as_mut().unwrap().process(sidechain_fft_channel_input, &mut sidechain_spectrum[channel_number]) {
                 nih_log!("Sidechain FFT failed: {e}");
                 return ProcessStatus::Error("Sidechain FFT failed");
             }
@@ -257,11 +252,9 @@ impl Plugin for FreqChain {
 
         // Create an input and output vector per channel for the FFT
         let mut fft_input: Vec<Vec<f32>> = (0..channels)
-            .map(|_| self.fft_plan.as_mut().unwrap().make_input_vec())
-            .collect();
+            .map(|_| self.fft_plan.as_mut().unwrap().make_input_vec()).collect();
         let mut spectrum: Vec<Vec<Complex<f32>>> = (0..channels)
-            .map(|_| self.fft_plan.as_mut().unwrap().make_output_vec())
-            .collect();
+            .map(|_| self.fft_plan.as_mut().unwrap().make_output_vec()).collect();
 
         // Read input buffer
         for (sample_index, channel_samples) in buffer.iter_samples().enumerate() {
@@ -287,9 +280,7 @@ impl Plugin for FreqChain {
 
         // Compute the FFT for each of the channels
         for (channel, fft_channel_input) in fft_input.iter_mut().enumerate() {
-            if let Err(e) = self.fft_plan.as_mut().unwrap()
-                .process(fft_channel_input, &mut spectrum[channel])
-            {
+            if let Err(e) = self.fft_plan.as_mut().unwrap().process(fft_channel_input, &mut spectrum[channel]) {
                 nih_log!("FFT failed: {e}");
                 return ProcessStatus::Error("FFT failed");
             }
@@ -315,14 +306,11 @@ impl Plugin for FreqChain {
 
         // Create an output vector per channel for the inverse FFT
         let mut fft_inverse_output: Vec<Vec<f32>> = (0..channels)
-            .map(|_| self.fft_inverse_plan.as_mut().unwrap().make_output_vec())
-            .collect();
+            .map(|_| self.fft_inverse_plan.as_mut().unwrap().make_output_vec()).collect();
 
         // Compute the inverse FFT for each of the channels
         for (channel, result_spectrum_channel) in result_spectrum.iter_mut().enumerate() {
-            if let Err(e) = self.fft_inverse_plan.as_mut().unwrap()
-                .process(result_spectrum_channel, &mut fft_inverse_output[channel])
-            {
+            if let Err(e) = self.fft_inverse_plan.as_mut().unwrap().process(result_spectrum_channel, &mut fft_inverse_output[channel]) {
                 nih_log!("FFT inverse failed: {e}");
                 return ProcessStatus::Error("FFT inverse failed");
             }
