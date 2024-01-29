@@ -1,0 +1,20 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="FL Test [Debug]" type="ShConfigurationType">
+    <option name="SCRIPT_TEXT" value="&amp; (Get-ItemProperty -Path Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Image-Line\Shared\Paths -Name &quot;FL Studio&quot;).&quot;FL Studio&quot; &quot;.\FreqChain Plugin Test.flp&quot; 2&gt;&amp;1 | Out-Default" />
+    <option name="INDEPENDENT_SCRIPT_PATH" value="true" />
+    <option name="SCRIPT_PATH" value="" />
+    <option name="SCRIPT_OPTIONS" value="" />
+    <option name="INDEPENDENT_SCRIPT_WORKING_DIRECTORY" value="true" />
+    <option name="SCRIPT_WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <option name="INDEPENDENT_INTERPRETER_PATH" value="true" />
+    <option name="INTERPRETER_PATH" value="powershell.exe" />
+    <option name="INTERPRETER_OPTIONS" value="" />
+    <option name="EXECUTE_IN_TERMINAL" value="false" />
+    <option name="EXECUTE_SCRIPT_FILE" value="false" />
+    <envs pass-parent-envs="false" />
+    <method v="2">
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="Build [Debug]" run_configuration_type="CargoCommandRunConfiguration" />
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="Copy To Plugin Dir [VST3|64]" run_configuration_type="ShConfigurationType" />
+    </method>
+  </configuration>
+</component>

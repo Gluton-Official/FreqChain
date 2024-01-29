@@ -1,39 +1,21 @@
 use std::borrow::Borrow;
+use std::f32::consts::{FRAC_PI_2, FRAC_PI_6, TAU};
 
 use atomic_refcell::AtomicRefCell;
 use nih_plug::prelude::Param;
 use nih_plug_iced::{
-    Background,
-    canvas,
-    Clipboard,
-    Color,
-    Element,
-    Event,
-    event,
-    Font,
-    keyboard,
-    Layout,
-    layout,
-    Length,
+    backend::Renderer,
+    canvas::{self, path::Arc, Path},
+    event, keyboard, layout,
+    layout::Limits,
     mouse,
-    Point,
-    Rectangle,
-    renderer,
-    Shell,
-    Size,
-    TextInput,
-    touch,
-    Vector,
-    widget,
-    Widget,
+    renderer::{self, Renderer as GraphicsRenderer, Style},
+    text::Renderer as TextRenderer,
+    touch, widget,
+    widgets::{util, ParamMessage},
+    Background, Clipboard, Color, Element, Event, Font, Layout, Length, Point, Rectangle, Shell, Size, TextInput,
+    Vector, Widget,
 };
-use nih_plug_iced::backend::Renderer;
-use nih_plug_iced::canvas::Path;
-use nih_plug_iced::canvas::path::Arc;
-use nih_plug_iced::layout::Limits;
-use nih_plug_iced::renderer::{Renderer as GraphicsRenderer, Style};
-use nih_plug_iced::text::Renderer as TextRenderer;
-use nih_plug_iced::widgets::{ParamMessage, util};
 
 /// When shift+dragging a parameter, one pixel dragged corresponds to this much change in the
 /// normalized parameter.
@@ -154,18 +136,9 @@ impl<'a, P: Param> ParamKnob<'a, P> {
         let mut text_input_state = self.state.text_input_state.borrow_mut();
         text_input_state.focus();
 
-        let text_size = self
-            .text_size
-            .unwrap_or_else(|| renderer.borrow().default_size());
-        let text_width = renderer
-            .borrow()
-            .measure_width(current_value, text_size, self.font);
-        let text_input = TextInput::new(
-            &mut text_input_state,
-            "",
-            current_value,
-            TextInputMessage::Value,
-        )
+        let text_size = self.text_size.unwrap_or_else(|| renderer.borrow().default_size());
+        let text_width = renderer.borrow().measure_width(current_value, text_size, self.font);
+        let text_input = TextInput::new(&mut text_input_state, "", current_value, TextInputMessage::Value)
             .font(self.font)
             .size(text_size)
             .width(Length::Units(text_width.ceil() as u16))
@@ -232,7 +205,7 @@ impl<'a, P: Param> Widget<ParamMessage, Renderer> for ParamKnob<'a, P> {
         cursor_position: Point,
         renderer: &Renderer,
         clipboard: &mut dyn Clipboard,
-        shell: &mut Shell<'_, ParamMessage>
+        shell: &mut Shell<'_, ParamMessage>,
     ) -> event::Status {
         // The presence of a value in `self.state.text_input_value` indicates that the field should
         // be focused. The field handles defocusing by itself
@@ -261,7 +234,7 @@ impl<'a, P: Param> Widget<ParamMessage, Renderer> for ParamKnob<'a, P> {
         layout: Layout<'_>,
         cursor_position: Point,
         _viewport: &Rectangle,
-        _renderer: &Renderer
+        _renderer: &Renderer,
     ) -> mouse::Interaction {
         let bounds = layout.bounds();
         let is_mouse_over = bounds.contains(cursor_position);
@@ -279,7 +252,7 @@ impl<'a, P: Param> Widget<ParamMessage, Renderer> for ParamKnob<'a, P> {
         _style: &Style,
         layout: Layout<'_>,
         cursor_position: Point,
-        viewport: &Rectangle
+        viewport: &Rectangle,
     ) {
         let bounds = layout.bounds();
         let borderless_bounds = Rectangle {
@@ -292,12 +265,11 @@ impl<'a, P: Param> Widget<ParamMessage, Renderer> for ParamKnob<'a, P> {
 
         // Draw circle
         // TODO: use stylesheet
-        let background_color =
-            if is_mouse_over || self.state.drag_active || self.state.text_input_value.is_some() {
-                Color::new(0.5, 0.5, 0.5, 0.1)
-            } else {
-                Color::TRANSPARENT
-            };
+        let background_color = if is_mouse_over || self.state.drag_active || self.state.text_input_value.is_some() {
+            Color::new(0.5, 0.5, 0.5, 0.1)
+        } else {
+            Color::TRANSPARENT
+        };
 
         renderer.fill_quad(
             renderer::Quad {
@@ -312,14 +284,9 @@ impl<'a, P: Param> Widget<ParamMessage, Renderer> for ParamKnob<'a, P> {
         // Only draw the text input widget when it is focused.
         // Otherwise, overlay the label with the knob
         if let Some(current_value) = &self.state.text_input_value {
-            self.with_text_input(
-                layout,
-                renderer,
-                current_value,
-                |text_input, layout, renderer| {
-                    text_input.draw(renderer, layout, cursor_position, None)
-                },
-            )
+            self.with_text_input(layout, renderer, current_value, |text_input, layout, renderer| {
+                text_input.draw(renderer, layout, cursor_position, None)
+            })
         } else {
             // Visualize the difference between the current value and the default value if the
             // default value lies somewhere in the middle and the parameter is continuous.
@@ -331,21 +298,33 @@ impl<'a, P: Param> Widget<ParamMessage, Renderer> for ParamKnob<'a, P> {
                 std::mem::swap(&mut start_value, &mut end_value)
             };
 
-            let value_path = Path::new(|builder| {
-                builder.arc(
-                    Arc {
-                        center: bounds.center(),
-                        radius: borderless_bounds.width / 2.0,
-                        start_angle: start_value * std::f32::consts::TAU + std::f32::consts::FRAC_PI_6 + std::f32::consts::FRAC_PI_2,
-                        end_angle: end_value * std::f32::consts::TAU + std::f32::consts::FRAC_PI_6 + std::f32::consts::FRAC_PI_2,
-                    }
-                );
+            let value_path = Path::new(|path| {
+                path.arc(Arc {
+                    center: bounds.center(),
+                    radius: borderless_bounds.width / 2.0,
+                    start_angle: start_value * TAU + FRAC_PI_6 + FRAC_PI_2,
+                    end_angle: end_value * TAU + FRAC_PI_6 + FRAC_PI_2,
+                });
+            });
+            let background_path = Path::new(|path| {
+                path.arc(Arc {
+                    center: bounds.center(),
+                    radius: borderless_bounds.width / 2.0,
+                    start_angle: FRAC_PI_6 + FRAC_PI_2,
+                    end_angle: 0.8 * TAU + FRAC_PI_6 + FRAC_PI_2,
+                });
             });
 
             let mut frame = canvas::Frame::new(viewport.size());
-            frame.stroke(&value_path, canvas::Stroke::default()
-                .with_color(Color::BLACK)
-                .with_width(1.0)
+            frame.stroke(
+                &background_path,
+                canvas::Stroke::default()
+                    .with_color(Color::from_rgba8(0, 0, 0, 0.5))
+                    .with_width(1.0),
+            );
+            frame.stroke(
+                &value_path,
+                canvas::Stroke::default().with_color(Color::BLACK).with_width(1.0),
             );
             renderer.draw_primitive(frame.into_geometry().into_primitive());
         }
@@ -366,21 +345,16 @@ impl<'a, P: Param> ParamKnob<'a, P> {
             let event = event.clone();
             let mut messages = Vec::new();
             let mut text_input_shell = Shell::new(&mut messages);
-            let status = self.with_text_input(
-                layout,
-                renderer,
-                current_value,
-                |mut text_input, layout, renderer| {
-                    text_input.on_event(
-                        event,
-                        layout,
-                        cursor_position,
-                        renderer,
-                        clipboard,
-                        &mut text_input_shell,
-                    )
-                }
-            );
+            let status = self.with_text_input(layout, renderer, current_value, |mut text_input, layout, renderer| {
+                text_input.on_event(
+                    event,
+                    layout,
+                    cursor_position,
+                    renderer,
+                    clipboard,
+                    &mut text_input_shell,
+                )
+            });
 
             // Pressing escape will unfocus the text field, so we should propagate that change in
             // our own model
@@ -420,7 +394,7 @@ impl<'a, P: Param> ParamKnob<'a, P> {
         event: Event,
         cursor_position: Point,
         shell: &mut Shell<ParamMessage>,
-        bounds: &Rectangle
+        bounds: &Rectangle,
     ) -> Option<event::Status> {
         match event {
             Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
@@ -456,10 +430,7 @@ impl<'a, P: Param> ParamKnob<'a, P> {
                         shell.publish(ParamMessage::BeginSetParameter(self.param.as_ptr()));
                         self.state.drag_active = true;
 
-                        self.set_normalized_value(
-                            shell,
-                            util::remap_rect_y_coordinate(&bounds, cursor_position.y),
-                        );
+                        self.set_normalized_value(shell, util::remap_rect_y_coordinate(&bounds, cursor_position.y));
                         self.state.granular_drag_start_y_value = None;
                     }
 
@@ -476,16 +447,13 @@ impl<'a, P: Param> ParamKnob<'a, P> {
                     return Some(event::Status::Captured);
                 }
             }
-            Event::Mouse(mouse::Event::CursorMoved { .. })
-            | Event::Touch(touch::Event::FingerMoved { .. }) => {
+            Event::Mouse(mouse::Event::CursorMoved { .. }) | Event::Touch(touch::Event::FingerMoved { .. }) => {
                 if self.state.drag_active {
                     if self.state.keyboard_modifiers.shift() {
                         let (drag_start_y, drag_start_value) = *self
                             .state
                             .granular_drag_start_y_value
-                            .get_or_insert_with(|| {
-                                (cursor_position.y, self.param.modulated_normalized_value())
-                            });
+                            .get_or_insert_with(|| (cursor_position.y, self.param.modulated_normalized_value()));
 
                         self.set_normalized_value(
                             shell,
@@ -498,10 +466,7 @@ impl<'a, P: Param> ParamKnob<'a, P> {
                     } else {
                         self.state.granular_drag_start_y_value = None;
 
-                        self.set_normalized_value(
-                            shell,
-                            util::remap_rect_y_coordinate(&bounds, cursor_position.y),
-                        );
+                        self.set_normalized_value(shell, util::remap_rect_y_coordinate(&bounds, cursor_position.y));
                     }
 
                     return Some(event::Status::Captured);
@@ -511,16 +476,10 @@ impl<'a, P: Param> ParamKnob<'a, P> {
                 self.state.keyboard_modifiers = modifiers;
 
                 // cancel drag
-                if self.state.drag_active
-                    && self.state.granular_drag_start_y_value.is_some()
-                    && !modifiers.shift()
-                {
+                if self.state.drag_active && self.state.granular_drag_start_y_value.is_some() && !modifiers.shift() {
                     self.state.granular_drag_start_y_value = None;
 
-                    self.set_normalized_value(
-                        shell,
-                        util::remap_rect_y_coordinate(&bounds, cursor_position.y),
-                    );
+                    self.set_normalized_value(shell, util::remap_rect_y_coordinate(&bounds, cursor_position.y));
                 }
 
                 return Some(event::Status::Captured);

@@ -1,7 +1,5 @@
-use nih_plug::prelude::*;
-
 use freqchain::FreqChain;
 
 fn main() {
-    nih_export_standalone::<FreqChain>();
+    nih_plug::nih_export_standalone::<FreqChain>();
 }
