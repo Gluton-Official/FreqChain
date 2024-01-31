@@ -15,7 +15,10 @@ use crate::audio_processing::fft::{self, ForwardFFT, InverseFFT};
 const SIDECHAIN_INPUTS: usize = 1;
 const DEFAULT_CHANNELS: usize = 2;
 const FFT_WINDOW_SIZE: usize = 1024;
-const GAIN_COMPENSATION: f32 = 1.0 / FFT_WINDOW_SIZE as f32;
+const FFT_HOP_SIZE: usize = 64;
+
+const FFT_OVERLAP_TIMES: usize = FFT_WINDOW_SIZE / FFT_HOP_SIZE;
+const GAIN_COMPENSATION: f32 = 1.0 / (FFT_WINDOW_SIZE * FFT_OVERLAP_TIMES) as f32;
 
 pub struct FrequencySidechain {
     stft: StftHelper<SIDECHAIN_INPUTS>,
@@ -78,7 +81,7 @@ impl FrequencySidechain {
         self.stft.process_overlap_add_sidechain(
             main_buffer,
             [sidechain_buffer],
-            1, // No additional overlaps
+            FFT_OVERLAP_TIMES,
             |channel_index, sidechain_buffer_index, real_buffer| {
                 // The sidechain buffers are be processed before the main buffer.
                 // Since we only need a single sidechain buffer, we don't have to worry about the
@@ -101,7 +104,10 @@ impl FrequencySidechain {
                         let (frequency_magnitude, phase) = main_bin.to_polar();
                         let sidechain_frequency_magnitude = sidechain_bin.norm();
 
-                        let result_magnitude = clamp_min(frequency_magnitude - sidechain_frequency_magnitude, 0.0);
+                        let result_magnitude = clamp_min(
+                            frequency_magnitude - (sidechain_frequency_magnitude * FFT_OVERLAP_TIMES as f32),
+                            0.0,
+                        );
 
                         // Reconstruct the complex value from the main input's phase and our output magnitude
                         // and apply gain compensation based on the FFT size
