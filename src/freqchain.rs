@@ -9,14 +9,18 @@ use crate::{
     audio_processing::{
         frequency_sidechain::FrequencySidechain,
         spectrum::{Spectrum, SpectrumOutput},
+        equalizer::Equalizer,
     },
     params::FreqChainParams,
     ui::editor,
 };
+use crate::audio_processing::equalizer::{BandType};
 
 const SMOOTHING_DECAY_MS: f32 = 150.0;
 
 const CHANNELS: usize = 2;
+
+pub const EQ_BAND_COUNT: usize = 7;
 
 pub struct FreqChain {
     params: Arc<FreqChainParams>,
@@ -32,6 +36,8 @@ pub struct FreqChain {
     sidechain_input_peak_meter_value: Arc<AtomicF32>,
     sidechain_output_peak_meter_value: Arc<AtomicF32>,
 
+    equalizer: Equalizer<EQ_BAND_COUNT>,
+
     sidechain_spectrum: Spectrum,
     sidechain_spectrum_output: Arc<Mutex<SpectrumOutput>>,
 
@@ -43,7 +49,7 @@ impl Default for FreqChain {
         let (sidechain_spectrum, sidechain_spectrum_output) = Spectrum::new();
 
         Self {
-            params: Arc::new(FreqChainParams::default()),
+            params: Arc::new(FreqChainParams::new()),
 
             sample_rate: Arc::new(AtomicF32::new(1.0)),
 
@@ -53,6 +59,8 @@ impl Default for FreqChain {
             output_peak_meter_value: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
             sidechain_input_peak_meter_value: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
             sidechain_output_peak_meter_value: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
+
+            equalizer: Default::default(),
 
             sidechain_spectrum,
             sidechain_spectrum_output: Arc::new(Mutex::new(sidechain_spectrum_output)),
@@ -112,7 +120,9 @@ impl Plugin for FreqChain {
         buffer_config: &BufferConfig,
         context: &mut impl InitContext<Self>,
     ) -> bool {
-        self.sample_rate = Arc::new(AtomicF32::new(buffer_config.sample_rate));
+        self.sample_rate.store(buffer_config.sample_rate, Ordering::Relaxed);
+
+        self.equalizer.set_sample_rate(buffer_config.sample_rate);
 
         // After `SMOOTHING_DECAY_MS` milliseconds of silence, the peak meter's value should drop by 12 dB
         self.smoothing_decay_weight = 0.25f32.powf((buffer_config.sample_rate * SMOOTHING_DECAY_MS / 1000.0).recip());
@@ -147,6 +157,17 @@ impl Plugin for FreqChain {
             sidechain_buffer.samples(),
             "Main and sidechain buffer samples differ"
         );
+
+        self.equalizer.process(sidechain_buffer, &self.params.equalizer);
+
+        if self.params.debug.output_sidechain_only.value() {
+            for (mut channel_samples, sidechain_channel_samples) in buffer.iter_samples().zip(sidechain_buffer.iter_samples()) {
+                for (sample, sidechain_sample) in channel_samples.iter_mut().zip(sidechain_channel_samples) {
+                    *sample = *sidechain_sample;
+                }
+            }
+            return ProcessStatus::Normal;
+        }
 
         self.frequency_sidechain.ensure_channels(self.channels());
         self.frequency_sidechain.process(buffer, sidechain_buffer);
