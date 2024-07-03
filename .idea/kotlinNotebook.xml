@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="KotlinNotebookOptionsProvider">
+    <option name="jdkName" value="temurin-17" />
+  </component>
+  <component name="KotlinNotebookPlotExportOptionsProvider">
+    <option name="fileName" value="plot.png" />
+    <option name="format" value="PNG" />
+  </component>
+</project>
