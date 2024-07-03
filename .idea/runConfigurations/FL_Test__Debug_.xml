@@ -14,7 +14,7 @@
     <envs pass-parent-envs="false" />
     <method v="2">
       <option name="RunConfigurationTask" enabled="true" run_configuration_name="Build [Debug]" run_configuration_type="CargoCommandRunConfiguration" />
-      <option name="RunConfigurationTask" enabled="true" run_configuration_name="Copy To Plugin Dir [VST3|64]" run_configuration_type="ShConfigurationType" />
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="Copy To Plugin Dir [VST3]" run_configuration_type="ShConfigurationType" />
     </method>
   </configuration>
 </component>

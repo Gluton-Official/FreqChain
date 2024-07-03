@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Copy To Plugin Dir [VST3]" type="ShConfigurationType" activateToolWindowBeforeRun="false">
-    <option name="SCRIPT_TEXT" value="Start-Process Powershell -WindowStyle Hidden -Verb RunAs -ArgumentList '-command Copy-Item -Force .\target\bundled\FreqChain.vst3\Contents\x86_64-win\FreqChain.vst3 \&quot;C:\Program Files\Common Files\VST3\&quot;'" />
+    <option name="SCRIPT_TEXT" value="Start-Process pwsh.exe -WindowStyle Hidden -Verb RunAs -ArgumentList '-command Copy-Item -Force .\target\bundled\FreqChain.vst3\Contents\x86_64-win\FreqChain.vst3 \&quot;C:\Program Files\Common Files\VST3\&quot;'" />
     <option name="INDEPENDENT_SCRIPT_PATH" value="true" />
     <option name="SCRIPT_PATH" value="" />
     <option name="SCRIPT_OPTIONS" value="" />
