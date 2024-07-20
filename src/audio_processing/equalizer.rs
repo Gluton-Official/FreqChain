@@ -7,6 +7,8 @@ use nih_plug::formatters;
 use nih_plug::params::{EnumParam, FloatParam, Params};
 use nih_plug::prelude::{Enum, FloatRange};
 
+use super::biquad_filter::BiquadFilter;
+
 pub struct Equalizer<const N: usize> {
     sample_rate: f32,
     biquad_filter: [BiquadFilter; N],
@@ -52,42 +54,6 @@ pub enum BandType {
     LowPass,
 }
 
-#[derive(Debug, Default, Copy, Clone)]
-pub struct BiquadFilter {
-    b0: f32,
-    b1: f32,
-    b2: f32,
-    a1: f32,
-    a2: f32,
-}
-
-impl BiquadFilter {
-    /// Applies the biquad transform to the given sample using the given coefficients and previous states.
-    ///
-    /// # Arguments
-    ///
-    /// * `sample` - The current input sample.
-    /// * `x1` - The previous input sample.
-    /// * `x2` - The sample before the previous input sample.
-    /// * `y1` - The previous output sample.
-    /// * `y2` - The sample before the previous output sample.
-    ///
-    /// # Returns
-    ///
-    /// The output sample after applying the biquad transform.
-    fn biquad_transform(
-        &self,
-        sample: f32,
-        x1: f32,
-        x2: f32,
-        y1: f32,
-        y2: f32,
-    ) -> f32 {
-        let BiquadFilter { b0, b1, b2, a1, a2 } = self;
-        b0 * sample + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
-    }
-}
-
 impl<const N: usize> Default for Equalizer<N> {
     fn default() -> Self {
         Self {
@@ -101,7 +67,7 @@ impl<const N: usize> Equalizer<N> {
     pub fn process(&mut self, buffer: &mut Buffer, params: &EqualizerParams<N>) {
         nih_debug_assert_ne!(self.sample_rate, 1_f32);
 
-        for (band_params, band_coefficients) in params.bands.iter().zip(self.biquad_filter.iter_mut()) {
+        for (band_params, band_filters) in params.bands.iter().zip(self.biquad_filter.iter_mut()) {
             // skip processing for peak and shelf filters when gain is 0db
             if matches!(
                 band_params.band_type.value(),
@@ -112,7 +78,7 @@ impl<const N: usize> Equalizer<N> {
 
             // update coefficients if dirty (i.e. the parameters were changed)
             if band_params.dirty.load(Ordering::SeqCst) {
-                *band_coefficients = band_params.calculate_coefficients(self.sample_rate);
+                *band_filters = band_params.calculate_filter(self.sample_rate);
                 band_params.dirty.store(false, Ordering::SeqCst);
             }
 
@@ -120,13 +86,12 @@ impl<const N: usize> Equalizer<N> {
             let mut y = [0_f32; 2]; // output sample history, newest to oldest
             for channel_samples in buffer.iter_samples() {
                 for sample in channel_samples {
-                    let result = band_coefficients.biquad_transform(
+                    let result = band_filters.biquad_transform(
                         *sample,
                         x[0],
                         x[1],
                         y[0],
                         y[1],
-                        
                     );
                     x[1] = x[0];
                     x[0] = *sample;
@@ -194,13 +159,13 @@ impl BandParams {
     }
 
     #[allow(non_snake_case)]
-    pub fn calculate_coefficients(&self, sample_rate: f32) -> BiquadFilter {
+    fn calculate_filter(&self, sample_rate: f32) -> BiquadFilter {
+        let w0 = TAU * self.frequency.value() / sample_rate;
+        let sin_w0 = w0.sin();
+        let cos_w0 = w0.cos();
         match self.band_type.value() {
             BandType::Peak => {
                 let A = 10_f32.powf(self.gain.value() / 40_f32);
-                let w0 = TAU * self.frequency.value() / sample_rate;
-                let cos_w0 = w0.cos();
-                let sin_w0 = w0.sin();
                 let alpha = sin_w0 * (2_f32.ln() / 2_f32 * self.bandwidth(w0) * w0 / sin_w0).sinh();
                 let a0 = 1_f32 + alpha / A;
                 BiquadFilter {
@@ -212,9 +177,6 @@ impl BandParams {
                 }
             }
             BandType::Notch => {
-                let w0 = TAU * self.frequency.value() / sample_rate;
-                let cos_w0 = w0.cos();
-                let sin_w0 = w0.sin();
                 let alpha = sin_w0 * (2_f32.ln() / 2_f32 * self.bandwidth(w0) * w0 / sin_w0).sinh();
                 let a0 = 1_f32 + alpha;
                 BiquadFilter {
@@ -227,9 +189,6 @@ impl BandParams {
             }
             BandType::HighShelf => {
                 let A = 10_f32.powf(self.gain.value() / 40_f32);
-                let w0 = TAU * self.frequency.value() / sample_rate;
-                let cos_w0 = w0.cos();
-                let sin_w0 = w0.sin();
                 let alpha = sin_w0 / 2_f32 * ((A + 1_f32 / A) * (1_f32 / self.shelf_slope(A) - 1_f32)).sqrt();
                 let sqrt_A_alpha_2 = 2_f32 * A.sqrt() * alpha;
                 let a0 = (A + 1_f32) - (A - 1_f32) * cos_w0 + sqrt_A_alpha_2;
@@ -243,9 +202,6 @@ impl BandParams {
             }
             BandType::LowShelf => {
                 let A = 10_f32.powf(self.gain.value() / 40_f32);
-                let w0 = TAU * self.frequency.value() / sample_rate;
-                let cos_w0 = w0.cos();
-                let sin_w0 = w0.sin();
                 let alpha = sin_w0 / 2_f32 * ((A + 1_f32 / A) * (1_f32 / self.shelf_slope(A) - 1_f32)).sqrt();
                 let sqrt_A_alpha_2 = 2_f32 * A.sqrt() * alpha;
                 let a0 = (A + 1_f32) + (A - 1_f32) * cos_w0 + sqrt_A_alpha_2;
@@ -258,9 +214,6 @@ impl BandParams {
                 }
             }
             BandType::LowPass => {
-                let w0 = TAU * self.frequency.value() / sample_rate;
-                let cos_w0 = w0.cos();
-                let sin_w0 = w0.sin();
                 let alpha = sin_w0 / (2_f32 * self.resonance());
                 let a0 = 1_f32 + alpha;
                 BiquadFilter {
@@ -272,9 +225,7 @@ impl BandParams {
                 }
             }
             BandType::HighPass => {
-                let w0 = TAU * self.frequency.value() / sample_rate;
-                let cos_w0 = w0.cos();
-                let sin_w0 = w0.sin();
+
                 let alpha = sin_w0 / (2_f32 * self.resonance());
                 let a0 = 1_f32 + alpha;
                 BiquadFilter {
