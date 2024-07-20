@@ -1,14 +1,11 @@
-use std::any::Any;
-use std::collections::HashMap;
 use std::f32::consts::TAU;
-use std::slice::Iter;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use nih_plug::buffer::Buffer;
 use nih_plug::formatters;
 use nih_plug::params::{EnumParam, FloatParam, Params};
-use nih_plug::prelude::{AtomicF32, Enum, FloatRange};
+use nih_plug::prelude::{Enum, FloatRange};
 
 pub struct Equalizer<const N: usize> {
     sample_rate: f32,
