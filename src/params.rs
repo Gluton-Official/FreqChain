@@ -3,9 +3,7 @@ use std::sync::Arc;
 use nih_plug::params::{BoolParam, FloatParam, Params};
 use nih_plug::prelude::{FloatRange, SmoothingStyle};
 use nih_plug::{formatters, util};
-use nih_plug::wrapper::state::ParamValue::Bool;
 use nih_plug_iced::IcedState;
-use crate::audio_processing::equalizer::Equalizer;
 
 use crate::audio_processing::equalizer::EqualizerParams;
 use crate::ui::editor;
