@@ -153,7 +153,7 @@ impl IcedEditor for FreqChainEditor {
         //     .push(eq_tab);
 
         let sidechain_gain_slider =
-            ParamSlider::new(&mut self.sidechain_gain_slider_state, &self.params.sidechain_gain)
+            ParamSlider::new(&mut self.sidechain_gain_slider_state, &self.params.sidechain_input.gain)
                 .map(Message::ParamUpdate);
         // let sidechain_gain_input = TextInput::new(
         //     &mut self.sidechain_gain_input_state,
@@ -172,24 +172,24 @@ impl IcedEditor for FreqChainEditor {
             .push(sidechain_gain_slider)
             .push(sidechain_gain_label);
 
-        let sidechain_detail_knob =
-            ParamKnob::new(&mut self.sidechain_detail_knob_state, &self.params.detail).map(Message::ParamUpdate);
+        // let sidechain_detail_knob =
+        //     ParamKnob::new(&mut self.sidechain_detail_knob_state, &self.params.detail).map(Message::ParamUpdate);
         // let sidechain_detail_input = TextInput::new(
         //     &mut self.sidechain_detail_input_state,
         //     "0%",
         //     &format!("{}", self.params.detail),
         //     Message::ParamUpdate
         // );
-        let sidechain_detail_label = Text::new("Detail")
-            .height(20.into())
-            .width(Length::Fill)
-            .horizontal_alignment(alignment::Horizontal::Center)
-            .vertical_alignment(alignment::Vertical::Center);
-        let sidechain_detail = Column::new()
-            .align_items(Alignment::Center)
+        // let sidechain_detail_label = Text::new("Detail")
+        //     .height(20.into())
+        //     .width(Length::Fill)
+        //     .horizontal_alignment(alignment::Horizontal::Center)
+        //     .vertical_alignment(alignment::Vertical::Center);
+        // let sidechain_detail = Column::new()
+        //     .align_items(Alignment::Center)
             // .push(sidechain_detail_input)
-            .push(sidechain_detail_knob)
-            .push(sidechain_detail_label);
+            // .push(sidechain_detail_knob)
+            // .push(sidechain_detail_label);
 
         // let sidechain_spectrum = Spectrum::new(
         //     self.sidechain_spectrum.clone(),

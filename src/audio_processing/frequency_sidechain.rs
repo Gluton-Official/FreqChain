@@ -1,21 +1,19 @@
-use nih_plug::{
-    buffer::Buffer,
-    util::{
-        window::{hann, multiply_with_window},
-        StftHelper,
-    },
-};
+use nih_plug::prelude::*;
+use nih_plug::util::StftHelper;
+use nih_plug::util::window;
 use realfft::{
     num_complex::Complex32,
     num_traits::{clamp_min, Zero},
 };
 
 use crate::audio_processing::fft::{self, ForwardFFT, InverseFFT};
+use crate::freqchain::CHANNELS;
 
 const SIDECHAIN_INPUTS: usize = 1;
 const DEFAULT_CHANNELS: usize = 2;
 const FFT_WINDOW_SIZE: usize = 1024;
-const FFT_HOP_SIZE: usize = 64;
+// Number of samples the STFT processes
+const FFT_HOP_SIZE: usize = 64; // TODO: make debug parameter
 
 const FFT_OVERLAP_TIMES: usize = FFT_WINDOW_SIZE / FFT_HOP_SIZE;
 const GAIN_COMPENSATION: f32 = 1.0 / (FFT_WINDOW_SIZE * FFT_OVERLAP_TIMES) as f32;
@@ -32,6 +30,14 @@ pub struct FrequencySidechain {
     sidechain_complex_buffer: Vec<Vec<Complex32>>,
 
     window_function: Vec<f32>,
+}
+
+#[derive(Params)]
+pub struct FrequencySidechainParams {
+    #[id = "detail"]
+    detail: FloatParam,
+    #[id = "precision"]
+    precision: FloatParam,
 }
 
 impl FrequencySidechain {
@@ -53,46 +59,28 @@ impl FrequencySidechain {
                 .map(|_| fft::create_complex_buffer(FFT_WINDOW_SIZE))
                 .collect(),
 
-            window_function: hann(FFT_WINDOW_SIZE),
+            window_function: window::hann(FFT_WINDOW_SIZE),
         }
     }
 
-    pub fn ensure_channels(&mut self, channels: usize) {
-        if channels != self.channels {
-            self.channels = channels;
-            self.stft = StftHelper::new(channels, FFT_WINDOW_SIZE, 0);
-            self.main_complex_buffer = fft::create_complex_buffer(FFT_WINDOW_SIZE);
-            self.sidechain_complex_buffer = (0..channels)
-                .map(|_| fft::create_complex_buffer(FFT_WINDOW_SIZE))
-                .collect();
-        }
-    }
-
-    pub fn latency_samples(&self) -> u32 {
-        self.stft.latency_samples()
-    }
-
-    pub fn reset(&mut self) {
-        self.stft.set_block_size(FFT_WINDOW_SIZE);
-    }
-
-    pub fn process(&mut self, main_buffer: &mut Buffer, sidechain_buffer: &mut Buffer) {
+    pub fn process(&mut self, main_buffer: &mut Buffer, sidechain_buffer: &mut Buffer, params: &FrequencySidechainParams) {
         // Accumulates samples until the block size (our FFT size) is reached, then runs the callback
         self.stft.process_overlap_add_sidechain(
             main_buffer,
             [sidechain_buffer],
             FFT_OVERLAP_TIMES,
+            // Processes each sidechain buffers' channels, then the main buffer's channels
             |channel_index, sidechain_buffer_index, real_buffer| {
                 // The sidechain buffers are be processed before the main buffer.
-                // Since we only need a single sidechain buffer, we don't have to worry about the
-                // sidechain buffer index's value
+                // Since we only have a single sidechain buffer, we only need to know if a sidechain_buffer_index
+                // is provided
                 if sidechain_buffer_index.is_some() {
                     // Apply the Hann windowing function
-                    multiply_with_window(real_buffer, &self.window_function);
+                    window::multiply_with_window(real_buffer, &self.window_function);
 
-                    self.forward_fft
-                        .process(real_buffer, &mut self.sidechain_complex_buffer[channel_index]);
+                    self.forward_fft.process(real_buffer, &mut self.sidechain_complex_buffer[channel_index]);
                 } else {
+                    // If no sidechain_buffer_index is provided, real_buffer is channel_index of main_buffer
                     self.forward_fft.process(real_buffer, &mut self.main_complex_buffer);
 
                     for (main_bin, sidechain_bin) in self
@@ -124,5 +112,39 @@ impl FrequencySidechain {
                 }
             },
         );
+    }
+
+    // fn ensure_channels(&mut self, channels: usize) {
+    //     if channels != self.channels {
+    //         self.channels = channels;
+    //         self.stft = StftHelper::new(channels, FFT_WINDOW_SIZE, 0);
+    //         self.main_complex_buffer = fft::create_complex_buffer(FFT_WINDOW_SIZE);
+    //         self.sidechain_complex_buffer = (0..channels)
+    //             .map(|_| fft::create_complex_buffer(FFT_WINDOW_SIZE))
+    //             .collect();
+    //     }
+    // }
+
+    pub fn latency_samples(&self) -> u32 {
+        self.stft.latency_samples()
+    }
+
+    pub fn reset(&mut self) {
+        self.stft.set_block_size(FFT_WINDOW_SIZE);
+    }
+}
+
+impl Default for FrequencySidechainParams {
+    fn default() -> Self {
+        Self {
+            detail: FloatParam::new("Detail", 0.5, FloatRange::Linear { min: 0.0, max: 1.0 })
+                .with_unit("%")
+                .with_value_to_string(formatters::v2s_f32_percentage(0))
+                .with_string_to_value(formatters::s2v_f32_percentage()),
+            precision: FloatParam::new("Precision", 0.8, FloatRange::Linear { min: 0.0, max: 1.0 })
+                .with_unit("%")
+                .with_value_to_string(formatters::v2s_f32_percentage(0))
+                .with_string_to_value(formatters::s2v_f32_percentage()),
+        }
     }
 }

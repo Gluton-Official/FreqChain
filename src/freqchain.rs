@@ -14,11 +14,10 @@ use crate::{
     params::FreqChainParams,
     ui::editor,
 };
-use crate::audio_processing::equalizer::{BandType};
 
 const SMOOTHING_DECAY_MS: f32 = 150.0;
 
-const CHANNELS: usize = 2;
+pub const CHANNELS: usize = 2;
 
 pub const EQ_BAND_COUNT: usize = 7;
 
@@ -127,8 +126,7 @@ impl Plugin for FreqChain {
         // After `SMOOTHING_DECAY_MS` milliseconds of silence, the peak meter's value should drop by 12 dB
         self.smoothing_decay_weight = 0.25f32.powf((buffer_config.sample_rate * SMOOTHING_DECAY_MS / 1000.0).recip());
 
-        self.sidechain_spectrum
-            .set_smoothing_decay_weight(self.smoothing_decay_weight);
+        self.sidechain_spectrum.set_smoothing_decay_weight(self.smoothing_decay_weight);
 
         context.set_latency_samples(self.frequency_sidechain.latency_samples());
 
@@ -147,30 +145,34 @@ impl Plugin for FreqChain {
     ) -> ProcessStatus {
         let sidechain_buffer = &mut aux.inputs[0];
 
-        nih_debug_assert_eq!(
-            buffer.channels(),
-            sidechain_buffer.channels(),
-            "Main and sidechain buffer channels differ"
-        );
-        nih_debug_assert_eq!(
-            buffer.samples(),
-            sidechain_buffer.samples(),
-            "Main and sidechain buffer samples differ"
-        );
+        if self.params.mono_processing.value() && sidechain_buffer.channels() != 1 {
+            let channels = sidechain_buffer.channels() as f32;
+            for mut sidechain_channel_samples in sidechain_buffer.iter_samples() {
+                let averaged_sample = sidechain_channel_samples.iter_mut().map(|x| *x / channels).sum();
+                for sidechain_sample in sidechain_channel_samples {
+                    *sidechain_sample = averaged_sample;
+                }
+            }
+        }
+
+        for mut sidechain_channel_samples in sidechain_buffer.iter_samples() {
+            for sidechain_sample in sidechain_channel_samples {
+                *sidechain_sample *= self.params.sidechain_input.gain.smoothed.next();
+            }
+        }
 
         self.equalizer.process(sidechain_buffer, &self.params.equalizer);
 
-        if self.params.debug.output_sidechain_only.value() {
-            for (mut channel_samples, sidechain_channel_samples) in buffer.iter_samples().zip(sidechain_buffer.iter_samples()) {
-                for (sample, sidechain_sample) in channel_samples.iter_mut().zip(sidechain_channel_samples) {
+        if self.params.sidechain_input.solo.value() {
+            for (channel_samples, sidechain_channel_samples) in buffer.iter_samples().zip(sidechain_buffer.iter_samples()) {
+                for (sample, sidechain_sample) in channel_samples.into_iter().zip(sidechain_channel_samples) {
                     *sample = *sidechain_sample;
                 }
             }
             return ProcessStatus::Normal;
         }
 
-        self.frequency_sidechain.ensure_channels(self.channels());
-        self.frequency_sidechain.process(buffer, sidechain_buffer);
+        self.frequency_sidechain.process(buffer, sidechain_buffer, &self.params.frequency_sidechain);
 
         ProcessStatus::Normal // allow for suspense if no input audio
     }
@@ -187,13 +189,5 @@ impl FreqChain {
         };
 
         peak_meter_value.store(new_peak_meter_value, Ordering::Relaxed);
-    }
-
-    fn channels(&self) -> usize {
-        if self.params.is_mono.value() {
-            1
-        } else {
-            CHANNELS
-        }
     }
 }

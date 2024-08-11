@@ -2,22 +2,22 @@ use std::f32::consts::TAU;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use nih_plug::buffer::Buffer;
-use nih_plug::formatters;
-use nih_plug::params::{EnumParam, FloatParam, Params};
-use nih_plug::prelude::{Enum, FloatRange};
+use nih_plug::prelude::*;
 
 use super::biquad_filter::BiquadFilter;
 
 pub struct Equalizer<const N: usize> {
     sample_rate: f32,
-    biquad_filter: [BiquadFilter; N],
+    biquad_filters: [BiquadFilter; N],
 }
 
 #[derive(Params)]
 pub struct EqualizerParams<const N: usize> {
     #[nested(array, group = "Band")]
     pub bands: [BandParams; N],
+
+    #[id = "bypass"]
+    pub bypass: BoolParam,
 }
 
 #[derive(Params)]
@@ -58,16 +58,20 @@ impl<const N: usize> Default for Equalizer<N> {
     fn default() -> Self {
         Self {
             sample_rate: 1.0,
-            biquad_filter: [Default::default(); N],
+            biquad_filters: [Default::default(); N],
         }
     }
 }
 
 impl<const N: usize> Equalizer<N> {
     pub fn process(&mut self, buffer: &mut Buffer, params: &EqualizerParams<N>) {
+        if params.bypass.value() {
+            return;
+        }
+
         nih_debug_assert_ne!(self.sample_rate, 1_f32);
 
-        for (band_params, band_filters) in params.bands.iter().zip(self.biquad_filter.iter_mut()) {
+        for (band_params, band_filters) in params.bands.iter().zip(self.biquad_filters.iter_mut()) {
             // skip processing for peak and shelf filters when gain is 0db
             if matches!(
                 band_params.band_type.value(),
@@ -82,21 +86,21 @@ impl<const N: usize> Equalizer<N> {
                 band_params.dirty.store(false, Ordering::SeqCst);
             }
 
-            let mut x = [0_f32; 2]; // input sample history, newest to oldest
-            let mut y = [0_f32; 2]; // output sample history, newest to oldest
+            let mut x = [[0_f32; 2]; 2]; // input sample history, newest to oldest
+            let mut y = [[0_f32; 2]; 2]; // output sample history, newest to oldest
             for channel_samples in buffer.iter_samples() {
-                for sample in channel_samples {
+                for (channel_index, sample) in channel_samples.into_iter().enumerate() {
                     let result = band_filters.biquad_transform(
                         *sample,
-                        x[0],
-                        x[1],
-                        y[0],
-                        y[1],
+                        x[channel_index][0],
+                        x[channel_index][1],
+                        y[channel_index][0],
+                        y[channel_index][1],
                     );
-                    x[1] = x[0];
-                    x[0] = *sample;
-                    y[1] = y[0];
-                    y[0] = result;
+                    x[channel_index][1] = x[channel_index][0];
+                    x[channel_index][0] = *sample;
+                    y[channel_index][1] = y[channel_index][0];
+                    y[channel_index][0] = result;
 
                     *sample = result;
                 }
@@ -169,22 +173,22 @@ impl BandParams {
                 let alpha = sin_w0 * (2_f32.ln() / 2_f32 * self.bandwidth(w0) * w0 / sin_w0).sinh();
                 let a0 = 1_f32 + alpha / A;
                 BiquadFilter {
-                    b0:  (1_f32 + alpha * A)/a0,
-                    b1: (-2_f32 * cos_w0)/a0,
-                    b2:  (1_f32 - alpha * A)/a0,
-                    a1: (-2_f32 * cos_w0)/a0,
-                    a2:  (1_f32 - alpha / A)/a0,
+                    b0:  (1_f32 + alpha * A) / a0,
+                    b1: (-2_f32 * cos_w0)    / a0,
+                    b2:  (1_f32 - alpha * A) / a0,
+                    a1: (-2_f32 * cos_w0)    / a0,
+                    a2:  (1_f32 - alpha / A) / a0,
                 }
             }
             BandType::Notch => {
                 let alpha = sin_w0 * (2_f32.ln() / 2_f32 * self.bandwidth(w0) * w0 / sin_w0).sinh();
                 let a0 = 1_f32 + alpha;
                 BiquadFilter {
-                    b0:  1_f32/a0,
-                    b1: (-2_f32 * cos_w0)/a0,
-                    b2:  1_f32/a0,
+                    b0:   1_f32           / a0,
+                    b1: (-2_f32 * cos_w0) / a0,
+                    b2:   1_f32           / a0,
                     a1: (-2_f32 * cos_w0) / a0,
-                    a2:  (1_f32 - alpha) / a0,
+                    a2:  (1_f32 - alpha)  / a0,
                 }
             }
             BandType::HighShelf => {
@@ -194,10 +198,10 @@ impl BandParams {
                 let a0 = (A + 1_f32) - (A - 1_f32) * cos_w0 + sqrt_A_alpha_2;
                 BiquadFilter {
                     b0:          (A * ((A + 1_f32) + (A - 1_f32) * cos_w0 + sqrt_A_alpha_2)) / a0,
-                    b1: (-2_f32 * A * ((A - 1_f32) + (A + 1_f32) * cos_w0)) /a0,
-                    b2:          (A * ((A + 1_f32) + (A - 1_f32) * cos_w0 - sqrt_A_alpha_2))/a0,
-                    a1:      (2_f32 * ((A - 1_f32) - (A + 1_f32) * cos_w0))/a0,
-                    a2:             ((A + 1_f32) - (A - 1_f32) * cos_w0 - sqrt_A_alpha_2)/a0,
+                    b1: (-2_f32 * A * ((A - 1_f32) + (A + 1_f32) * cos_w0))                  / a0,
+                    b2:          (A * ((A + 1_f32) + (A - 1_f32) * cos_w0 - sqrt_A_alpha_2)) / a0,
+                    a1:      (2_f32 * ((A - 1_f32) - (A + 1_f32) * cos_w0))                  / a0,
+                    a2:               ((A + 1_f32) - (A - 1_f32) * cos_w0 - sqrt_A_alpha_2)  / a0,
                 }
             }
             BandType::LowShelf => {
@@ -206,34 +210,33 @@ impl BandParams {
                 let sqrt_A_alpha_2 = 2_f32 * A.sqrt() * alpha;
                 let a0 = (A + 1_f32) + (A - 1_f32) * cos_w0 + sqrt_A_alpha_2;
                 BiquadFilter {
-                    b0:         (A * ((A + 1_f32) - (A - 1_f32) * cos_w0 + sqrt_A_alpha_2))/a0,
-                    b1: (2_f32 * A * ((A - 1_f32) - (A + 1_f32) * cos_w0))/a0,
-                    b2:         (A * ((A + 1_f32) - (A - 1_f32) * cos_w0 - sqrt_A_alpha_2))/a0,
-                    a1:    (-2_f32 * ((A - 1_f32) + (A + 1_f32) * cos_w0))/a0,
-                    a2:              ((A + 1_f32) + (A - 1_f32) * cos_w0 - sqrt_A_alpha_2)/a0,
+                    b0:         (A * ((A + 1_f32) - (A - 1_f32) * cos_w0 + sqrt_A_alpha_2)) / a0,
+                    b1: (2_f32 * A * ((A - 1_f32) - (A + 1_f32) * cos_w0))                  / a0,
+                    b2:         (A * ((A + 1_f32) - (A - 1_f32) * cos_w0 - sqrt_A_alpha_2)) / a0,
+                    a1:    (-2_f32 * ((A - 1_f32) + (A + 1_f32) * cos_w0))                  / a0,
+                    a2:              ((A + 1_f32) + (A - 1_f32) * cos_w0 - sqrt_A_alpha_2)  / a0,
                 }
             }
             BandType::LowPass => {
                 let alpha = sin_w0 / (2_f32 * self.resonance());
                 let a0 = 1_f32 + alpha;
                 BiquadFilter {
-                    b0: ((1_f32 - cos_w0) / 2_f32)/a0,
-                    b1:  (1_f32 - cos_w0)/a0,
-                    b2: ((1_f32 - cos_w0) / 2_f32)/a0,
-                    a1: (-2_f32 * cos_w0)/a0,
-                    a2:  (1_f32 - alpha)/a0,
+                    b0: ((1_f32 - cos_w0) / 2_f32) / a0,
+                    b1:  (1_f32 - cos_w0)          / a0,
+                    b2: ((1_f32 - cos_w0) / 2_f32) / a0,
+                    a1: (-2_f32 * cos_w0)          / a0,
+                    a2:  (1_f32 - alpha)           / a0,
                 }
             }
             BandType::HighPass => {
-
                 let alpha = sin_w0 / (2_f32 * self.resonance());
                 let a0 = 1_f32 + alpha;
                 BiquadFilter {
-                    b0:  ((1_f32 + cos_w0) / 2_f32)/a0,
-                    b1: (-(1_f32 + cos_w0))/a0,
-                    b2:  ((1_f32 + cos_w0) / 2_f32)/a0,
-                    a1:  (-2_f32 * cos_w0)/a0,
-                    a2:   (1_f32 - alpha)/a0,
+                    b0:  ((1_f32 + cos_w0) / 2_f32) / a0,
+                    b1: (-(1_f32 + cos_w0))         / a0,
+                    b2:  ((1_f32 + cos_w0) / 2_f32) / a0,
+                    a1:  (-2_f32 * cos_w0)          / a0,
+                    a2:   (1_f32 - alpha)           / a0,
                 }
             }
         }
@@ -265,7 +268,8 @@ impl Default for EqualizerParams<7> {
                 BandParams::new(5, BandType::Peak, 1363.0, 1.0, 0.0),
                 BandParams::new(6, BandType::Peak, 2936.0, 1.0, 0.0),
                 BandParams::new(7, BandType::HighShelf, 6324.0, 1.0, 0.0),
-            ]
+            ],
+            bypass: BoolParam::new("Bypass", false),
         }
     }
 }
