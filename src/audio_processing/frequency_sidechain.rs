@@ -104,7 +104,6 @@ impl FrequencySidechain {
 
                     // Set the imaginary values of the first and last frequency bins to zero
                     // so the inverse FFT can be performed
-                    // TODO: prevent from having to set these?
                     self.main_complex_buffer.first_mut().unwrap().im.set_zero();
                     self.main_complex_buffer.last_mut().unwrap().im.set_zero();
 
