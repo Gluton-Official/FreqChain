@@ -13,8 +13,7 @@ impl ClapPlugin for FreqChain {
 
     const CLAP_FEATURES: &'static [ClapFeature] = &[
         ClapFeature::AudioEffect,
-        ClapFeature::Stereo,
-        ClapFeature::Mono,
-        ClapFeature::Gate,
+        ClapFeature::Mixing,
+        ClapFeature::Custom("gluton:sidechain")
     ];
 }
