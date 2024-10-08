@@ -11,6 +11,7 @@ use crate::{
     freqchain::EQ_BAND_COUNT,
     ui::editor,
 };
+use crate::audio_processing::adsr::ADSRParams;
 
 /// The [`Params`] derive macro provides the plugin wrapper (e.g. within a DAW) the plugin's
 /// parameters, persistent serializable fields, and nested parameter groups.
@@ -27,6 +28,8 @@ pub struct FreqChainParams {
 
     #[nested(id_prefix = "equalizer", group = "equalizer")]
     pub equalizer: EqualizerParams<EQ_BAND_COUNT>,
+    #[nested(id_prefix = "adsr", group = "adsr")]
+    pub adsr: ADSRParams,
     #[nested(id_prefix = "frequency_sidechain", group = "frequency_sidechain")]
     pub frequency_sidechain: FrequencySidechainParams,
 }
@@ -49,6 +52,7 @@ impl FreqChainParams {
             sidechain_input: SidechainInputParams::default(),
 
             equalizer: EqualizerParams::default(),
+            adsr: ADSRParams::default(),
             frequency_sidechain: FrequencySidechainParams::default(),
         }
     }
