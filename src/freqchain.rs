@@ -14,7 +14,6 @@ use crate::{
     params::FreqChainParams,
     ui::editor,
 };
-use crate::audio_processing::adsr::ADSR;
 
 const SMOOTHING_DECAY_MS: f32 = 150.0;
 
@@ -37,8 +36,6 @@ pub struct FreqChain {
     sidechain_output_peak_meter_value: Arc<AtomicF32>,
 
     equalizer: Equalizer<EQ_BAND_COUNT>,
-
-    adsr: ADSR<CHANNELS>,
 
     sidechain_spectrum: Spectrum,
     sidechain_spectrum_output: Arc<Mutex<SpectrumOutput>>,
@@ -63,8 +60,6 @@ impl Default for FreqChain {
             sidechain_output_peak_meter_value: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
 
             equalizer: Default::default(),
-
-            adsr: ADSR::default(),
 
             sidechain_spectrum,
             sidechain_spectrum_output: Arc::new(Mutex::new(sidechain_spectrum_output)),
@@ -160,8 +155,6 @@ impl Plugin for FreqChain {
             }
         }
 
-        self.adsr.process(sidechain_buffer, self.sample_rate.load(Ordering::Relaxed), &self.params.adsr);
-
         for mut sidechain_channel_samples in sidechain_buffer.iter_samples() {
             for sidechain_sample in sidechain_channel_samples {
                 *sidechain_sample *= self.params.sidechain_input.gain.smoothed.next();
@@ -179,7 +172,7 @@ impl Plugin for FreqChain {
             return ProcessStatus::Normal;
         }
 
-        self.frequency_sidechain.process(buffer, sidechain_buffer, &self.params.frequency_sidechain);
+        self.frequency_sidechain.process(buffer, sidechain_buffer, self.sample_rate.load(Ordering::Relaxed), &self.params.frequency_sidechain);
 
         ProcessStatus::Normal // allow for suspense if no input audio
     }
