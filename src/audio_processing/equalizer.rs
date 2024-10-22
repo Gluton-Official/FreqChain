@@ -57,6 +57,7 @@ pub enum BandType {
 impl<const N: usize> Default for Equalizer<N> {
     fn default() -> Self {
         Self {
+            // TODO: potentially change to Option
             sample_rate: 1.0,
             biquad_filters: [Default::default(); N],
         }
@@ -71,7 +72,7 @@ impl<const N: usize> Equalizer<N> {
 
         nih_debug_assert_ne!(self.sample_rate, 1_f32);
 
-        for (band_params, band_filters) in params.bands.iter().zip(self.biquad_filters.iter_mut()) {
+        for (band_params, band_filter) in params.bands.iter().zip(self.biquad_filters.iter_mut()) {
             // skip processing for peak and shelf filters when gain is 0db
             if matches!(
                 band_params.band_type.value(),
@@ -82,7 +83,7 @@ impl<const N: usize> Equalizer<N> {
 
             // update coefficients if dirty (i.e. the parameters were changed)
             if band_params.dirty.load(Ordering::SeqCst) {
-                *band_filters = band_params.calculate_filter(self.sample_rate);
+                *band_filter = band_params.calculate_filter(self.sample_rate);
                 band_params.dirty.store(false, Ordering::SeqCst);
             }
 
@@ -90,7 +91,7 @@ impl<const N: usize> Equalizer<N> {
             let mut y = [[0_f32; 2]; 2]; // output sample history, newest to oldest
             for channel_samples in buffer.iter_samples() {
                 for (channel_index, sample) in channel_samples.into_iter().enumerate() {
-                    let result = band_filters.biquad_transform(
+                    let result = band_filter.biquad_transform(
                         *sample,
                         x[channel_index][0],
                         x[channel_index][1],
