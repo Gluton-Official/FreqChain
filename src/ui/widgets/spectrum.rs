@@ -18,7 +18,7 @@ use nih_plug_iced::{
     Color, Element, Layout, Length, Point, Rectangle, Size, Widget,
 };
 
-use crate::audio_processing::spectrum::SpectrumOutput;
+use crate::modules::spectrum::SpectrumOutput;
 
 const BORDER_WIDTH: f32 = 1.0;
 

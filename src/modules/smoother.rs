@@ -1,5 +1,6 @@
-use nih_plug::prelude::*;
 use std::ops::Not;
+
+use nih_plug::prelude::*;
 
 #[derive(Params)]
 pub struct SmootherParams {

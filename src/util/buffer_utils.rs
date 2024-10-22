@@ -1,4 +1,4 @@
-use nih_plug::buffer::Buffer;
+use nih_plug::buffer::{Buffer, ChannelSamples, ChannelSamplesIter};
 
 pub trait BufferUtils {
     /// ### Arguments for F

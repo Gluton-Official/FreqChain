@@ -1,11 +1,11 @@
 
 #[derive(Debug, Default, Copy, Clone)]
-pub(super) struct BiquadFilter {
-    pub(super) b0: f32,
-    pub(super) b1: f32,
-    pub(super) b2: f32,
-    pub(super) a1: f32,
-    pub(super) a2: f32,
+pub struct BiquadFilter {
+    pub b0: f32,
+    pub b1: f32,
+    pub b2: f32,
+    pub a1: f32,
+    pub a2: f32,
 }
 
 impl BiquadFilter {
@@ -22,7 +22,7 @@ impl BiquadFilter {
     /// # Returns
     ///
     /// The output sample after applying the biquad transform.
-    pub(super) fn biquad_transform(
+    pub fn biquad_transform(
         &self,
         sample: f32,
         x1: f32,

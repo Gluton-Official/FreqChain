@@ -1,4 +1,5 @@
-use nih_plug::prelude::{Vst3Plugin, Vst3SubCategory};
+use nih_plug::prelude::Vst3Plugin;
+use nih_plug::prelude::Vst3SubCategory;
 
 use crate::freqchain::FreqChain;
 

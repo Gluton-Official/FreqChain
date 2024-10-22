@@ -1,14 +1,16 @@
 use nih_plug::prelude::*;
-use nih_plug::util::StftHelper;
 use nih_plug::util::window;
-use realfft::{
-    num_complex::Complex32,
-    num_traits::{clamp_min, Zero},
-};
+use nih_plug::util::StftHelper;
+use realfft::num_complex::Complex32;
+use realfft::num_traits::clamp_min;
+use realfft::num_traits::Zero;
 
-use crate::audio_processing::fft::{self, ForwardFFT, InverseFFT};
 use crate::freqchain::CHANNELS;
-use crate::audio_processing::smoother::{Smoother, SmootherParams};
+use crate::modules::smoother::Smoother;
+use crate::modules::smoother::SmootherParams;
+use crate::util::fft;
+use crate::util::fft::ForwardFFT;
+use crate::util::fft::InverseFFT;
 
 const SIDECHAIN_INPUTS: usize = 1;
 const DEFAULT_CHANNELS: usize = 2;
@@ -38,12 +40,12 @@ pub struct FrequencySidechain {
 #[derive(Params)]
 pub struct FrequencySidechainParams {
     #[id = "detail"]
-    detail: FloatParam,
+    pub detail: FloatParam,
     #[id = "precision"]
-    precision: FloatParam,
+    pub precision: FloatParam,
 
     #[nested(group = "Smoother")]
-    smoother: SmootherParams,
+    pub smoother: SmootherParams,
 }
 
 impl FrequencySidechain {

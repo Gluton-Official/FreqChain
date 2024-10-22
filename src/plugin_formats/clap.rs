@@ -1,7 +1,6 @@
-use nih_plug::{
-    plugin::Plugin,
-    prelude::{ClapFeature, ClapPlugin},
-};
+use nih_plug::plugin::Plugin;
+use nih_plug::prelude::ClapFeature;
+use nih_plug::prelude::ClapPlugin;
 
 use crate::freqchain::FreqChain;
 

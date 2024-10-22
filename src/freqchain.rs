@@ -1,19 +1,19 @@
-use std::{
-    num::NonZeroU32,
-    sync::{atomic::Ordering, Arc, Mutex},
-};
+use std::num::NonZeroU32;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 use nih_plug::prelude::*;
+use nih_plug_iced::IcedState;
 
-use crate::{
-    audio_processing::{
-        frequency_sidechain::FrequencySidechain,
-        spectrum::{Spectrum, SpectrumOutput},
-        equalizer::Equalizer,
-    },
-    params::FreqChainParams,
-    ui::editor,
-};
+use crate::modules::equalizer::Equalizer;
+use crate::modules::equalizer::EqualizerParams;
+use crate::modules::frequency_sidechain::FrequencySidechain;
+use crate::modules::frequency_sidechain::FrequencySidechainParams;
+use crate::modules::spectrum::Spectrum;
+use crate::modules::spectrum::SpectrumOutput;
+use crate::ui::editor;
+use crate::util::buffer_utils::BufferUtils;
 
 const SMOOTHING_DECAY_MS: f32 = 150.0;
 
@@ -43,30 +43,31 @@ pub struct FreqChain {
     frequency_sidechain: FrequencySidechain,
 }
 
-impl Default for FreqChain {
-    fn default() -> Self {
-        let (sidechain_spectrum, sidechain_spectrum_output) = Spectrum::new();
+/// The [`Params`] derive macro provides the plugin wrapper (e.g. within a DAW) the plugin's
+/// parameters, persistent serializable fields, and nested parameter groups.
+#[derive(Params)]
+pub struct FreqChainParams {
+    #[persist = "editor_state"]
+    pub editor_state: Arc<IcedState>,
 
-        Self {
-            params: Arc::new(FreqChainParams::new()),
+    #[id = "mono_processing"]
+    pub mono_processing: BoolParam,
 
-            sample_rate: Arc::new(AtomicF32::new(1.0)),
+    #[nested(id_prefix = "sidechain_input", group = "Sidechain Input")]
+    pub sidechain_input: SidechainInputParams,
 
-            smoothing_decay_weight: 1.0,
+    #[nested(id_prefix = "equalizer", group = "Equalizer")]
+    pub equalizer: EqualizerParams<EQ_BAND_COUNT>,
+    #[nested(id_prefix = "frequency_sidechain", group = "Frequency Sidechain")]
+    pub frequency_sidechain: FrequencySidechainParams,
+}
 
-            input_peak_meter_value: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
-            output_peak_meter_value: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
-            sidechain_input_peak_meter_value: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
-            sidechain_output_peak_meter_value: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
-
-            equalizer: Default::default(),
-
-            sidechain_spectrum,
-            sidechain_spectrum_output: Arc::new(Mutex::new(sidechain_spectrum_output)),
-
-            frequency_sidechain: FrequencySidechain::new(),
-        }
-    }
+#[derive(Params)]
+pub struct SidechainInputParams {
+    #[id = "solo"]
+    pub solo: BoolParam,
+    #[id = "gain"]
+    pub gain: FloatParam,
 }
 
 impl Plugin for FreqChain {
@@ -126,7 +127,8 @@ impl Plugin for FreqChain {
         // After `SMOOTHING_DECAY_MS` milliseconds of silence, the peak meter's value should drop by 12 dB
         self.smoothing_decay_weight = 0.25f32.powf((buffer_config.sample_rate * SMOOTHING_DECAY_MS / 1000.0).recip());
 
-        self.sidechain_spectrum.set_smoothing_decay_weight(self.smoothing_decay_weight);
+        self.sidechain_spectrum
+            .set_smoothing_decay_weight(self.smoothing_decay_weight);
 
         context.set_latency_samples(self.frequency_sidechain.latency_samples());
 
@@ -148,18 +150,16 @@ impl Plugin for FreqChain {
         if self.params.mono_processing.value() && sidechain_buffer.channels() != 1 {
             let channels = sidechain_buffer.channels() as f32;
             for mut sidechain_channel_samples in sidechain_buffer.iter_samples() {
-                let averaged_sample = sidechain_channel_samples.iter_mut().map(|x| *x / channels).sum();
+                let averaged_sample = sidechain_channel_samples.into_iter().sum() / channels;
                 for sidechain_sample in sidechain_channel_samples {
                     *sidechain_sample = averaged_sample;
                 }
             }
         }
 
-        for mut sidechain_channel_samples in sidechain_buffer.iter_samples() {
-            for sidechain_sample in sidechain_channel_samples {
-                *sidechain_sample *= self.params.sidechain_input.gain.smoothed.next();
-            }
-        }
+        sidechain_buffer.on_each_sample(|_, _, sidechain_sample| {
+            *sidechain_sample *= self.params.sidechain_input.gain.smoothed.next();
+        });
 
         self.equalizer.process(sidechain_buffer, &self.params.equalizer);
 
@@ -172,22 +172,79 @@ impl Plugin for FreqChain {
             return ProcessStatus::Normal;
         }
 
-        self.frequency_sidechain.process(buffer, sidechain_buffer, self.sample_rate.load(Ordering::Relaxed), &self.params.frequency_sidechain);
+        self.frequency_sidechain.process(
+            buffer,
+            sidechain_buffer,
+            self.sample_rate.load(Ordering::Relaxed),
+            &self.params.frequency_sidechain,
+        );
 
         ProcessStatus::Normal // allow for suspense if no input audio
     }
 }
 
-impl FreqChain {
-    fn update_peak_meter(&self, peak_meter_value: &Arc<AtomicF32>, amplitude: f32) {
-        let current_peak_meter_value = peak_meter_value.load(Ordering::Relaxed);
-        // Increase the peak meter value or gradually decay it
-        let new_peak_meter_value = if amplitude > current_peak_meter_value {
-            amplitude
-        } else {
-            current_peak_meter_value * self.smoothing_decay_weight + amplitude * (1.0 - self.smoothing_decay_weight)
-        };
+impl Default for FreqChain {
+    fn default() -> Self {
+        let (sidechain_spectrum, sidechain_spectrum_output) = Spectrum::new();
 
-        peak_meter_value.store(new_peak_meter_value, Ordering::Relaxed);
+        Self {
+            params: Arc::new(FreqChainParams::default()),
+
+            sample_rate: Arc::new(AtomicF32::new(1.0)),
+
+            smoothing_decay_weight: 1.0,
+
+            input_peak_meter_value: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
+            output_peak_meter_value: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
+            sidechain_input_peak_meter_value: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
+            sidechain_output_peak_meter_value: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
+
+            equalizer: Default::default(),
+
+            sidechain_spectrum,
+            sidechain_spectrum_output: Arc::new(Mutex::new(sidechain_spectrum_output)),
+
+            frequency_sidechain: FrequencySidechain::new(),
+        }
+    }
+}
+
+impl Default for FreqChainParams {
+    fn default() -> Self {
+        Self {
+            editor_state: editor::default_state(),
+
+            mono_processing: BoolParam::new("Mono Processing", false),
+
+            sidechain_input: SidechainInputParams::default(),
+
+            equalizer: EqualizerParams::default(),
+            frequency_sidechain: FrequencySidechainParams::default(),
+        }
+    }
+}
+
+impl Default for SidechainInputParams {
+    fn default() -> Self {
+        Self {
+            solo: BoolParam::new("Sidechain Input Solo", false),
+            gain: FloatParam::new(
+                "Sidechain Input Gain",
+                util::db_to_gain(0.0),
+                FloatRange::Skewed {
+                    min: util::db_to_gain(util::MINUS_INFINITY_DB),
+                    max: util::db_to_gain(24.0),
+                    // skew the float gain value to be linear decibels
+                    factor: FloatRange::gain_skew_factor(util::MINUS_INFINITY_DB, 24.0),
+                },
+            )
+            // Smooth the gain parameter logarithmically because it is in linear gain
+            // TODO: test w/ & w/o smoothing
+            .with_smoother(SmoothingStyle::Logarithmic(50.0))
+            .with_unit("dB") // Unit suffix to parameter display
+            // Set value transformers for display
+            .with_value_to_string(formatters::v2s_f32_gain_to_db(1))
+            .with_string_to_value(formatters::s2v_f32_gain_to_db()),
+        }
     }
 }

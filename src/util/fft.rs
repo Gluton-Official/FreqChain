@@ -1,6 +1,11 @@
 use std::sync::Arc;
 
-use realfft::{num_complex::Complex, num_traits::Zero, ComplexToReal, FftNum, RealFftPlanner, RealToComplex};
+use realfft::num_complex::Complex;
+use realfft::num_traits::Zero;
+use realfft::ComplexToReal;
+use realfft::FftNum;
+use realfft::RealFftPlanner;
+use realfft::RealToComplex;
 
 pub const LENGTH: usize = 1024;
 pub const WINDOW_OVERLAP: usize = 2;

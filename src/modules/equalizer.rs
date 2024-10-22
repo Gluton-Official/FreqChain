@@ -1,10 +1,11 @@
 use std::f32::consts::TAU;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 use nih_plug::prelude::*;
 
-use super::biquad_filter::BiquadFilter;
+use crate::util::biquad_filter::BiquadFilter;
 
 pub struct Equalizer<const N: usize> {
     sample_rate: f32,

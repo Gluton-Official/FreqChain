@@ -1,13 +1,15 @@
 use std::sync::Arc;
 
-use nih_plug::{
-    prelude::*,
-    util::{self, window::multiply_with_window},
-};
-use realfft::{num_complex::Complex32, RealFftPlanner, RealToComplex};
+use nih_plug::prelude::*;
+use nih_plug::util;
+use nih_plug::util::window::multiply_with_window;
+use realfft::num_complex::Complex32;
+use realfft::RealFftPlanner;
+use realfft::RealToComplex;
 use triple_buffer::TripleBuffer;
 
-use crate::audio_processing::{fft, DEFAULT_CHANNELS};
+use crate::freqchain::CHANNELS;
+use crate::util::fft;
 
 /// The amplitudes of all the frequency bins from a windowed FFT
 pub type SpectrumBuffer = [f32; fft::BUFFER_SIZE];
@@ -38,7 +40,7 @@ impl Spectrum {
         let (triple_buffer_input, triple_buffer_output) = TripleBuffer::new(&[0.0; fft::BUFFER_SIZE]).split();
         let spectrum_result_buffer = [0.0; fft::BUFFER_SIZE];
 
-        let stft = util::StftHelper::new(DEFAULT_CHANNELS, fft::LENGTH, 0);
+        let stft = util::StftHelper::new(CHANNELS, fft::LENGTH, 0);
         let fft_plan = RealFftPlanner::new().plan_fft_forward(fft::LENGTH);
         let compensated_window_function = util::window::hann(fft::LENGTH)
             .into_iter()

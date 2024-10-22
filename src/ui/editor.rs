@@ -8,14 +8,11 @@ use nih_plug_iced::{
 };
 
 use crate::{
-    audio_processing::spectrum::SpectrumOutput,
-    params::FreqChainParams,
-    ui::widgets::{
-        param_knob::{self, ParamKnob},
-        spectrum::{self, Spectrum},
-    },
+    modules::spectrum::SpectrumOutput,
+    ui::widgets::param_knob::{self},
     FreqChain,
 };
+use crate::freqchain::FreqChainParams;
 
 const EDITOR_WIDTH: u32 = 896;
 const EDITOR_HEIGHT: u32 = 512;
