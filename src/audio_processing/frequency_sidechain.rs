@@ -8,6 +8,7 @@ use realfft::{
 
 use crate::audio_processing::fft::{self, ForwardFFT, InverseFFT};
 use crate::freqchain::CHANNELS;
+use crate::audio_processing::smoother::{Smoother, SmootherParams};
 
 const SIDECHAIN_INPUTS: usize = 1;
 const DEFAULT_CHANNELS: usize = 2;
@@ -30,6 +31,8 @@ pub struct FrequencySidechain {
     sidechain_complex_buffer: Vec<Vec<Complex32>>,
 
     window_function: Vec<f32>,
+
+    smoother: Vec<Smoother>
 }
 
 #[derive(Params)]
@@ -38,6 +41,9 @@ pub struct FrequencySidechainParams {
     detail: FloatParam,
     #[id = "precision"]
     precision: FloatParam,
+
+    #[nested(group = "Smoother")]
+    smoother: SmootherParams,
 }
 
 impl FrequencySidechain {
@@ -60,10 +66,12 @@ impl FrequencySidechain {
                 .collect(),
 
             window_function: window::hann(FFT_WINDOW_SIZE),
+
+            smoother: vec![Smoother::default(); FFT_WINDOW_SIZE],
         }
     }
 
-    pub fn process(&mut self, main_buffer: &mut Buffer, sidechain_buffer: &mut Buffer, params: &FrequencySidechainParams) {
+    pub fn process(&mut self, main_buffer: &mut Buffer, sidechain_buffer: &mut Buffer, sample_rate: f32, params: &FrequencySidechainParams) {
         // Accumulates samples until the block size (our FFT size) is reached, then runs the callback
         self.stft.process_overlap_add_sidechain(
             main_buffer,
@@ -83,14 +91,18 @@ impl FrequencySidechain {
                     // If no sidechain_buffer_index is provided, real_buffer is channel_index of main_buffer
                     self.forward_fft.process(real_buffer, &mut self.main_complex_buffer);
 
-                    for (main_bin, sidechain_bin) in self
+                    // Iterates frequency bins of the main buffer and sidechain buffer
+                    for (bin_index, (main_bin, sidechain_bin)) in self
                         .main_complex_buffer
                         .iter_mut()
                         // Use the relevant channel of our already processed sidechain buffer
                         .zip(&self.sidechain_complex_buffer[channel_index])
+                        .enumerate()
                     {
                         let (frequency_magnitude, phase) = main_bin.to_polar();
-                        let sidechain_frequency_magnitude = sidechain_bin.norm();
+                        let mut sidechain_frequency_magnitude = sidechain_bin.norm();
+
+                        self.smoother[bin_index].process(&mut sidechain_frequency_magnitude, sample_rate, &params.smoother);
 
                         let result_magnitude = clamp_min(
                             frequency_magnitude - (sidechain_frequency_magnitude * FFT_OVERLAP_TIMES as f32),
@@ -113,17 +125,6 @@ impl FrequencySidechain {
         );
     }
 
-    // fn ensure_channels(&mut self, channels: usize) {
-    //     if channels != self.channels {
-    //         self.channels = channels;
-    //         self.stft = StftHelper::new(channels, FFT_WINDOW_SIZE, 0);
-    //         self.main_complex_buffer = fft::create_complex_buffer(FFT_WINDOW_SIZE);
-    //         self.sidechain_complex_buffer = (0..channels)
-    //             .map(|_| fft::create_complex_buffer(FFT_WINDOW_SIZE))
-    //             .collect();
-    //     }
-    // }
-
     pub fn latency_samples(&self) -> u32 {
         self.stft.latency_samples()
     }
@@ -144,6 +145,8 @@ impl Default for FrequencySidechainParams {
                 .with_unit("%")
                 .with_value_to_string(formatters::v2s_f32_percentage(0))
                 .with_string_to_value(formatters::s2v_f32_percentage()),
+
+            smoother: SmootherParams::default(),
         }
     }
 }

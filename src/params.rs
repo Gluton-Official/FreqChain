@@ -11,6 +11,7 @@ use crate::{
     freqchain::EQ_BAND_COUNT,
     ui::editor,
 };
+use crate::audio_processing::smoother::SmootherParams;
 
 /// The [`Params`] derive macro provides the plugin wrapper (e.g. within a DAW) the plugin's
 /// parameters, persistent serializable fields, and nested parameter groups.
@@ -22,12 +23,12 @@ pub struct FreqChainParams {
     #[id = "mono_processing"]
     pub mono_processing: BoolParam,
 
-    #[nested(id_prefix = "sidechain_input", group = "sidechain_input")]
+    #[nested(id_prefix = "sidechain_input", group = "Sidechain Input")]
     pub sidechain_input: SidechainInputParams,
 
-    #[nested(id_prefix = "equalizer", group = "equalizer")]
+    #[nested(id_prefix = "equalizer", group = "Equalizer")]
     pub equalizer: EqualizerParams<EQ_BAND_COUNT>,
-    #[nested(id_prefix = "frequency_sidechain", group = "frequency_sidechain")]
+    #[nested(id_prefix = "frequency_sidechain", group = "Frequency Sidechain")]
     pub frequency_sidechain: FrequencySidechainParams,
 }
 

@@ -172,7 +172,7 @@ impl Plugin for FreqChain {
             return ProcessStatus::Normal;
         }
 
-        self.frequency_sidechain.process(buffer, sidechain_buffer, &self.params.frequency_sidechain);
+        self.frequency_sidechain.process(buffer, sidechain_buffer, self.sample_rate.load(Ordering::Relaxed), &self.params.frequency_sidechain);
 
         ProcessStatus::Normal // allow for suspense if no input audio
     }
