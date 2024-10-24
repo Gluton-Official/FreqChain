@@ -117,7 +117,8 @@ impl<const N: usize> Equalizer<N> {
 
 impl BandParams {
     fn new(band_number: i32, band_type: BandType, frequency: f32, q: f32, gain: f32) -> Self {
-        let dirty = Arc::new(AtomicBool::new(false));
+        // Initialize as dirty just in case default bands actually do something
+        let dirty = Arc::new(AtomicBool::new(true));
 
         let band_name = format!("EQ Band {band_number}");
         Self {
