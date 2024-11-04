@@ -11,6 +11,7 @@ pub const LENGTH: usize = 1024;
 pub const WINDOW_OVERLAP: usize = 2;
 pub const BUFFER_SIZE: usize = LENGTH / 2 + 1;
 
+// TODO: join into one struct
 pub trait FFT<T: FftNum> {
     fn new(planner: &mut RealFftPlanner<T>, length: usize) -> Self;
     fn get_length(&self) -> usize;

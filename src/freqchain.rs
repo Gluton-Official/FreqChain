@@ -150,7 +150,7 @@ impl Plugin for FreqChain {
         if self.params.mono_processing.value() && sidechain_buffer.channels() != 1 {
             let channels = sidechain_buffer.channels() as f32;
             for mut sidechain_channel_samples in sidechain_buffer.iter_samples() {
-                let averaged_sample = sidechain_channel_samples.into_iter().sum() / channels;
+                let averaged_sample = sidechain_channel_samples.iter_mut().map(|x| *x / channels).sum();
                 for sidechain_sample in sidechain_channel_samples {
                     *sidechain_sample = averaged_sample;
                 }
