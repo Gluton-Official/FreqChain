@@ -4,8 +4,6 @@ use nih_plug::util::StftHelper;
 use realfft::num_complex::Complex32;
 use realfft::num_traits::clamp_min;
 use realfft::num_traits::Zero;
-
-use crate::freqchain::CHANNELS;
 use crate::modules::smoother::Smoother;
 use crate::modules::smoother::SmootherParams;
 use crate::util::fft;
@@ -13,11 +11,10 @@ use crate::util::fft::ForwardFFT;
 use crate::util::fft::InverseFFT;
 
 const SIDECHAIN_INPUTS: usize = 1;
-const DEFAULT_CHANNELS: usize = 2;
+/// Number of samples to collect before processing in the STFT
 const FFT_WINDOW_SIZE: usize = 1024;
-// Number of samples the STFT processes
-const FFT_HOP_SIZE: usize = 64; // TODO: make debug parameter
-
+/// Number of samples the STFT processes at a time within the window
+const FFT_HOP_SIZE: usize = 128; // TODO: make debug parameter
 const FFT_OVERLAP_TIMES: usize = FFT_WINDOW_SIZE / FFT_HOP_SIZE;
 const GAIN_COMPENSATION: f32 = 1.0 / (FFT_WINDOW_SIZE * FFT_OVERLAP_TIMES) as f32;
 
@@ -25,6 +22,10 @@ pub struct FrequencySidechain {
     stft: StftHelper<SIDECHAIN_INPUTS>,
 
     channels: usize,
+    window_size: usize,
+    /// Number of sample blocks the STFT process separately within the window
+    overlap_times: usize,
+    gain_compensation: f32,
 
     forward_fft: ForwardFFT<f32>,
     inverse_fft: InverseFFT<f32>,
@@ -34,7 +35,7 @@ pub struct FrequencySidechain {
 
     window_function: Vec<f32>,
 
-    smoother: Vec<Smoother>
+    smoother: Vec<Vec<Smoother>>
 }
 
 #[derive(Params)]
@@ -49,30 +50,36 @@ pub struct FrequencySidechainParams {
 }
 
 impl FrequencySidechain {
-    pub fn new() -> Self {
-        let (forward_fft, inverse_fft) = fft::create_fft_pair(FFT_WINDOW_SIZE);
+    pub fn new(channels: usize, window_size: usize, hop_size: usize) -> Self {
+        let (forward_fft, inverse_fft) = fft::create_fft_pair(window_size);
 
-        let channels = DEFAULT_CHANNELS;
+        let overlap_times = window_size / hop_size;
 
         Self {
-            stft: StftHelper::new(channels, FFT_WINDOW_SIZE, 0),
+            stft: StftHelper::new(channels, window_size, 0),
 
             channels,
+            window_size,
+            overlap_times,
+            gain_compensation: ((window_size * overlap_times) as f32).recip(),
 
             forward_fft,
             inverse_fft,
 
-            main_complex_buffer: fft::create_complex_buffer(FFT_WINDOW_SIZE),
+            main_complex_buffer: fft::create_complex_buffer(window_size),
+            // since the sidechain buffer's FFT is processed before the main buffer's FFT,
+            // we need a buffer to store the results for each channel
             sidechain_complex_buffer: (0..channels)
-                .map(|_| fft::create_complex_buffer(FFT_WINDOW_SIZE))
+                .map(|_| fft::create_complex_buffer(window_size))
                 .collect(),
+            
+            window_function: window::hann(window_size),
 
-            window_function: window::hann(FFT_WINDOW_SIZE),
-
-            smoother: vec![Smoother::default(); FFT_WINDOW_SIZE],
+            smoother: vec![vec![Smoother::default(); window_size]; channels],
         }
     }
 
+    // TODO: investigate debug profiling for some type of flame graph / do some timed tests
     pub fn process(&mut self, main_buffer: &mut Buffer, sidechain_buffer: &mut Buffer, sample_rate: f32, params: &FrequencySidechainParams) {
         // Accumulates samples until the block size (our FFT size) is reached, then runs the callback
         self.stft.process_overlap_add_sidechain(
@@ -90,6 +97,9 @@ impl FrequencySidechain {
 
                     self.forward_fft.process(real_buffer, &mut self.sidechain_complex_buffer[channel_index]);
                 } else {
+                    // Apply the Hann windowing function
+                    window::multiply_with_window(real_buffer, &self.window_function);
+                    
                     // If no sidechain_buffer_index is provided, real_buffer is channel_index of main_buffer
                     self.forward_fft.process(real_buffer, &mut self.main_complex_buffer);
 
@@ -104,16 +114,17 @@ impl FrequencySidechain {
                         let (frequency_magnitude, phase) = main_bin.to_polar();
                         let mut sidechain_frequency_magnitude = sidechain_bin.norm();
 
-                        self.smoother[bin_index].process(&mut sidechain_frequency_magnitude, sample_rate, &params.smoother);
-
+                        self.smoother[channel_index][bin_index]
+                            .process(&mut sidechain_frequency_magnitude, sample_rate, &params.smoother);
+    
                         let result_magnitude = clamp_min(
-                            frequency_magnitude - (sidechain_frequency_magnitude * FFT_OVERLAP_TIMES as f32),
+                            frequency_magnitude - (sidechain_frequency_magnitude * self.overlap_times as f32),
                             0.0,
                         );
 
                         // Reconstruct the complex value from the main input's phase and our output magnitude
                         // and apply gain compensation based on the FFT size
-                        *main_bin = Complex32::from_polar(result_magnitude, phase) * GAIN_COMPENSATION;
+                        *main_bin = Complex32::from_polar(result_magnitude, phase) * self.gain_compensation;
                     }
 
                     // Set the imaginary values of the first and last frequency bins to zero
@@ -132,7 +143,21 @@ impl FrequencySidechain {
     }
 
     pub fn reset(&mut self) {
-        self.stft.set_block_size(FFT_WINDOW_SIZE);
+        self.stft.set_block_size(self.window_size);
+    }
+}
+
+impl Default for FrequencySidechain {
+    /// Creates a [FrequencySidechain] with
+    /// - channels: 2
+    /// - window size: 1024
+    /// - hop size: 128
+    fn default() -> Self {
+        const CHANNELS: usize = 2;
+        const WINDOW_SIZE: usize = 1024;
+        const HOP_SIZE: usize = 128;
+        
+        Self::new(CHANNELS, WINDOW_SIZE, HOP_SIZE)
     }
 }
 
@@ -150,5 +175,100 @@ impl Default for FrequencySidechainParams {
 
             smoother: SmootherParams::default(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::util::buffer_utils::BufferUtils;
+    use super::*;
+
+    const SAMPLE_RATE: f32 = 44100.0;
+
+    fn create_buffer(buffers: Vec<Vec<f32>>) -> Buffer<'static> {
+        assert_eq!(buffers.len(), 2);
+        assert_eq!(buffers[0].len(), buffers[1].len());
+
+        let num_samples = buffers[0].len();
+
+        let buffer_slices = buffers
+            .into_iter()
+            .map(|inner| {
+                let slice = inner.into_boxed_slice();
+                let slice_ptr = Box::into_raw(slice);
+                unsafe { &mut *slice_ptr }
+            })
+            .collect();
+
+        let mut buffer = Buffer::default();
+        unsafe {
+            buffer.set_slices(num_samples, |output_slices| {
+                *output_slices = buffer_slices;
+            });
+        }
+        buffer
+    }
+
+    /// ### Arguments for F
+    /// - `channel`
+    /// - `sample_index`
+    fn create_buffer_with(num_samples: usize, f: impl Fn(usize, usize) -> f32) -> Buffer<'static> {
+        let buffers = (0..2).map(|channel| {
+            let mut buffer = vec![0_f32; num_samples];
+            for sample_index in 0..num_samples {
+                buffer[sample_index] = f(channel, sample_index);
+            }
+            buffer
+        }).collect();
+        create_buffer(buffers)
+    }
+
+    fn create_empty_buffer(num_samples: usize) -> Buffer<'static> {
+        create_buffer(vec![vec![0.0; num_samples]; 2])
+    }
+
+    #[test]
+    fn test_empty_buffers() {
+        let mut fs = FrequencySidechain::default();
+        let mut main_buffer = create_empty_buffer(1024);
+        let mut sidechain_buffer = create_empty_buffer(1024);
+        fs.process(&mut main_buffer, &mut sidechain_buffer, SAMPLE_RATE, &FrequencySidechainParams::default());
+        main_buffer.on_each_sample(|channel, sample_index, sample| {
+            assert_eq!(*sample, 0.0, "Channel {} | Sample {}", channel, sample_index);
+        });
+    }
+
+    #[test]
+    fn test_equal_buffers() {
+        let mut fs = FrequencySidechain::default();
+        let frequency = 440_f32;
+        let mut main_buffer = create_buffer_with(1024, |_, sample_index| {
+            ((frequency / SAMPLE_RATE) * sample_index as f32).sin()
+        });
+        let mut sidechain_buffer = create_buffer_with(1024, |_, sample_index| {
+            ((frequency / SAMPLE_RATE) * sample_index as f32).sin()
+        });
+        fs.process(&mut main_buffer, &mut sidechain_buffer, SAMPLE_RATE, &FrequencySidechainParams::default());
+        main_buffer.on_each_sample(|channel, sample_index, sample| {
+            assert_eq!(*sample, 0.0, "Channel {} | Sample {}", channel, sample_index);
+        });
+    }
+    
+    #[test]
+    fn test_remove_1_of_2_frequencies() {
+        let mut fs = FrequencySidechain::default();
+        let frequency_1 = 440_f32;
+        let frequency_2 = 880_f32;
+        let mut main_buffer = create_buffer_with(1024, |_, sample_index| {
+            ((frequency_1 / SAMPLE_RATE) * sample_index as f32).sin() + ((frequency_2 / SAMPLE_RATE) * sample_index as f32).sin()
+        });
+        let mut sidechain_buffer = create_buffer_with(1024, |_, sample_index| {
+            ((frequency_2 / SAMPLE_RATE) * sample_index as f32).sin()
+        });
+        fs.process(&mut main_buffer, &mut sidechain_buffer, SAMPLE_RATE, &FrequencySidechainParams::default());
+        main_buffer.on_each_sample(|channel, sample_index, sample| {
+            assert_eq!(*sample, 0.0, "Channel {} | Sample {}", channel, sample_index);
+            // assert_eq!(*sample, ((frequency_1 / SAMPLE_RATE) * sample_index as f32).sin(), "Channel {} | Sample {}", channel, sample_index);
+        });
     }
 }
