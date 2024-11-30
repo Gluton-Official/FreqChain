@@ -21,6 +21,9 @@ pub const CHANNELS: usize = 2;
 
 pub const EQ_BAND_COUNT: usize = 7;
 
+const FFT_WINDOW_SIZE: usize = 1024;
+const FFT_HOP_SIZE: usize = 128;
+
 pub struct FreqChain {
     params: Arc<FreqChainParams>,
 
@@ -204,7 +207,7 @@ impl Default for FreqChain {
             sidechain_spectrum,
             sidechain_spectrum_output: Arc::new(Mutex::new(sidechain_spectrum_output)),
 
-            frequency_sidechain: FrequencySidechain::new(),
+            frequency_sidechain: FrequencySidechain::new(CHANNELS, FFT_WINDOW_SIZE, FFT_HOP_SIZE),
         }
     }
 }
