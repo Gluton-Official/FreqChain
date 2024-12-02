@@ -147,20 +147,6 @@ impl FrequencySidechain {
     }
 }
 
-impl Default for FrequencySidechain {
-    /// Creates a [FrequencySidechain] with
-    /// - channels: 2
-    /// - window size: 1024
-    /// - hop size: 128
-    fn default() -> Self {
-        const CHANNELS: usize = 2;
-        const WINDOW_SIZE: usize = 1024;
-        const HOP_SIZE: usize = 128;
-        
-        Self::new(CHANNELS, WINDOW_SIZE, HOP_SIZE)
-    }
-}
-
 impl Default for FrequencySidechainParams {
     fn default() -> Self {
         Self {
@@ -229,7 +215,7 @@ mod tests {
 
     #[test]
     fn test_empty_buffers() {
-        let mut fs = FrequencySidechain::default();
+        let mut fs = FrequencySidechain::new(2, 1024, 128);
         let mut main_buffer = create_empty_buffer(1024);
         let mut sidechain_buffer = create_empty_buffer(1024);
         fs.process(&mut main_buffer, &mut sidechain_buffer, SAMPLE_RATE, &FrequencySidechainParams::default());
@@ -240,7 +226,7 @@ mod tests {
 
     #[test]
     fn test_equal_buffers() {
-        let mut fs = FrequencySidechain::default();
+        let mut fs = FrequencySidechain::new(2, 1024, 128);
         let frequency = 440_f32;
         let mut main_buffer = create_buffer_with(1024, |_, sample_index| {
             ((frequency / SAMPLE_RATE) * sample_index as f32).sin()
@@ -256,7 +242,7 @@ mod tests {
     
     #[test]
     fn test_remove_1_of_2_frequencies() {
-        let mut fs = FrequencySidechain::default();
+        let mut fs = FrequencySidechain::new(2, 1024, 128);
         let frequency_1 = 440_f32;
         let frequency_2 = 880_f32;
         let mut main_buffer = create_buffer_with(1024, |_, sample_index| {

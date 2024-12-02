@@ -17,9 +17,9 @@ use crate::util::buffer_utils::BufferUtils;
 
 const SMOOTHING_DECAY_MS: f32 = 150.0;
 
-pub const CHANNELS: usize = 2;
+const CHANNELS: usize = 2;
 
-pub const EQ_BAND_COUNT: usize = 7;
+const EQ_BAND_COUNT: usize = 7;
 
 const FFT_WINDOW_SIZE: usize = 1024;
 const FFT_HOP_SIZE: usize = 128;
@@ -38,7 +38,7 @@ pub struct FreqChain {
     sidechain_input_peak_meter_value: Arc<AtomicF32>,
     sidechain_output_peak_meter_value: Arc<AtomicF32>,
 
-    equalizer: Equalizer<EQ_BAND_COUNT>,
+    equalizer: Equalizer<EQ_BAND_COUNT, CHANNELS>,
 
     sidechain_spectrum: Spectrum,
     sidechain_spectrum_output: Arc<Mutex<SpectrumOutput>>,
@@ -202,7 +202,7 @@ impl Default for FreqChain {
             sidechain_input_peak_meter_value: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
             sidechain_output_peak_meter_value: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
 
-            equalizer: Default::default(),
+            equalizer: Equalizer::<EQ_BAND_COUNT, CHANNELS>::default(),
 
             sidechain_spectrum,
             sidechain_spectrum_output: Arc::new(Mutex::new(sidechain_spectrum_output)),

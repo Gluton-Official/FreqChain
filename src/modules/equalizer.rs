@@ -4,12 +4,11 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use nih_plug::prelude::*;
-use crate::freqchain::CHANNELS;
 use crate::util::biquad_filter::BiquadFilter;
 
-pub struct Equalizer<const N: usize> {
+pub struct Equalizer<const BANDS: usize, const CHANNELS: usize> {
     sample_rate: Option<f32>,
-    biquad_filters: [BiquadFilter; N],
+    biquad_filters: [BiquadFilter; BANDS],
 
     x1: [f32; CHANNELS],
     x2: [f32; CHANNELS],
@@ -60,11 +59,11 @@ pub enum BandType {
     LowPass,
 }
 
-impl<const N: usize> Default for Equalizer<N> {
+impl<const BANDS: usize, const CHANNELS: usize> Default for Equalizer<BANDS, CHANNELS> {
     fn default() -> Self {
         Self {
             sample_rate: None,
-            biquad_filters: [Default::default(); N],
+            biquad_filters: [BiquadFilter::default(); BANDS],
 
             x1: [0_f32; CHANNELS],
             x2: [0_f32; CHANNELS],
@@ -74,9 +73,9 @@ impl<const N: usize> Default for Equalizer<N> {
     }
 }
 
-impl<const N: usize> Equalizer<N> {
+impl<const BANDS: usize, const CHANNELS: usize> Equalizer<BANDS, CHANNELS> {
     // TODO: find more eq implementation references
-    pub fn process(&mut self, buffer: &mut Buffer, params: &EqualizerParams<N>) {
+    pub fn process(&mut self, buffer: &mut Buffer, params: &EqualizerParams<BANDS>) {
         if params.bypass.value() && self.sample_rate.is_none() {
             return;
         }
@@ -96,8 +95,6 @@ impl<const N: usize> Equalizer<N> {
                 band_params.dirty.store(false, Ordering::SeqCst);
             }
 
-            // let mut x = [[0_f32; 2]; 2]; // input sample history, newest to oldest
-            // let mut y = [[0_f32; 2]; 2]; // output sample history, newest to oldest
             for channel_samples in buffer.iter_samples() {
                 for (channel_index, sample) in channel_samples.into_iter().enumerate() {
                     let result = band_filter.biquad_transform(
@@ -179,7 +176,7 @@ impl BandParams {
         let w0 = TAU * self.frequency.value() / sample_rate;
         let sin_w0 = w0.sin();
         let cos_w0 = w0.cos();
-        let alpha = sin_w0 / (2_f32 * self.resonance());
+        let alpha = sin_w0 / (2_f32 * self.q.value());
         match self.band_type.value() {
             BandType::Peak => {
                 // linear gain

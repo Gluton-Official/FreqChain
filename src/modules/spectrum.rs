@@ -8,8 +8,9 @@ use realfft::RealFftPlanner;
 use realfft::RealToComplex;
 use triple_buffer::TripleBuffer;
 
-use crate::freqchain::CHANNELS;
 use crate::util::fft;
+
+const CHANNELS: usize = 2;
 
 /// The amplitudes of all the frequency bins from a windowed FFT
 pub type SpectrumBuffer = [f32; fft::BUFFER_SIZE];
