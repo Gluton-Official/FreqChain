@@ -1,8 +1,8 @@
 use nih_plug::prelude::*;
 use nih_plug::util::window;
 use nih_plug::util::StftHelper;
-use realfft::num_complex::Complex32;
-use realfft::num_traits::clamp_min;
+use realfft::num_complex::{Complex, Complex32};
+use realfft::num_traits::{clamp_max, clamp_min};
 use realfft::num_traits::Zero;
 use crate::modules::smoother::Smoother;
 use crate::modules::smoother::SmootherParams;
@@ -96,6 +96,9 @@ impl FrequencySidechain {
                     window::multiply_with_window(real_buffer, &self.window_function);
 
                     self.forward_fft.process(real_buffer, &mut self.sidechain_complex_buffer[channel_index]);
+
+                    detail_smoothing(params.detail.value(), &mut self.sidechain_complex_buffer[channel_index], sample_rate);
+                    precision_scaling(params.precision.value(), &mut self.sidechain_complex_buffer[channel_index]);
                 } else {
                     // Apply the Hann windowing function
                     window::multiply_with_window(real_buffer, &self.window_function);
@@ -147,14 +150,73 @@ impl FrequencySidechain {
     }
 }
 
+fn detail_smoothing(detail: f32, frequency_bins: &mut [Complex<f32>], sample_rate: f32) {
+    if detail == 1.0 { return; }
+
+    let nyquist = sample_rate / 2.0;
+    let cutoff_frequency = detail.max(f32::MIN_POSITIVE) * nyquist;  // Calculate the cutoff frequency proportional to detail
+    let num_bins = frequency_bins.len();
+    for (i, bin) in frequency_bins.iter_mut().enumerate() {
+        let magnitude = bin.norm();
+        if magnitude == 0.0 { continue; }
+
+        let frequency = (i as f32 / num_bins as f32) * nyquist;
+
+        // Create a low-pass filter with a Gaussian shape
+        let filter = (-(frequency / cutoff_frequency).powi(2)).exp();
+
+        // Apply the filter to the frequency bins
+        *bin = Complex32::from_polar(magnitude * filter, bin.arg());
+    }
+}
+
+fn precision_scaling(precision: f32, frequency_bins: &mut [Complex<f32>]) {
+    if precision == 0.0 { return; }
+
+    let alpha = if precision > 0.0 {
+        1.0 / (1.0 - precision)
+    } else {
+        1.0 - (precision.abs() * 0.999)
+    };
+
+    let mut magnitudes = frequency_bins.iter().map(|bin| bin.norm()).collect::<Vec<_>>();
+
+    let (mut min_magnitude, mut max_magnitude) = (f32::INFINITY, 0_f32);
+    let (mut min_scaled_magnitude, mut max_scaled_magnitude) = (f32::INFINITY, 0_f32);
+
+    for magnitude in magnitudes.iter_mut() {
+        min_magnitude = min_magnitude.min(*magnitude);
+        max_magnitude = max_magnitude.max(*magnitude);
+
+        *magnitude = magnitude.powf(alpha).max(0.0);
+
+        min_scaled_magnitude = min_scaled_magnitude.min(*magnitude);
+        max_scaled_magnitude = max_scaled_magnitude.max(*magnitude);
+    }
+
+    for (bin, magnitude) in frequency_bins.iter_mut().zip(magnitudes.iter()) {
+        let scaled_magnitude = (magnitude - min_scaled_magnitude) / (max_scaled_magnitude - min_scaled_magnitude)
+            * (max_magnitude - min_magnitude) + min_magnitude;
+        *bin = Complex32::from_polar(scaled_magnitude.max(0.0), bin.arg());
+    }
+}
+
 impl Default for FrequencySidechainParams {
     fn default() -> Self {
         Self {
-            detail: FloatParam::new("Detail", 0.5, FloatRange::Linear { min: 0.0, max: 1.0 })
+            detail: FloatParam::new(
+                "Detail",
+                1.0,
+                FloatRange::Skewed {
+                    min: 0.0,
+                    max: 1.0,
+                    factor: FloatRange::skew_factor(-2.0)
+                }
+            )
                 .with_unit("%")
                 .with_value_to_string(formatters::v2s_f32_percentage(0))
                 .with_string_to_value(formatters::s2v_f32_percentage()),
-            precision: FloatParam::new("Precision", 0.8, FloatRange::Linear { min: 0.0, max: 1.0 })
+            precision: FloatParam::new("Precision", 0.0, FloatRange::Linear { min: -1.0, max: 1.0 })
                 .with_unit("%")
                 .with_value_to_string(formatters::v2s_f32_percentage(0))
                 .with_string_to_value(formatters::s2v_f32_percentage()),
