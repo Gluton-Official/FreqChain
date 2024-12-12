@@ -2,8 +2,9 @@ use nih_plug::prelude::*;
 use nih_plug::util::window;
 use nih_plug::util::StftHelper;
 use realfft::num_complex::{Complex, Complex32};
-use realfft::num_traits::{clamp_max, clamp_min};
+use realfft::num_traits::clamp_min;
 use realfft::num_traits::Zero;
+
 use crate::modules::smoother::Smoother;
 use crate::modules::smoother::SmootherParams;
 use crate::util::fft;
@@ -11,12 +12,6 @@ use crate::util::fft::ForwardFFT;
 use crate::util::fft::InverseFFT;
 
 const SIDECHAIN_INPUTS: usize = 1;
-/// Number of samples to collect before processing in the STFT
-const FFT_WINDOW_SIZE: usize = 1024;
-/// Number of samples the STFT processes at a time within the window
-const FFT_HOP_SIZE: usize = 128; // TODO: make debug parameter
-const FFT_OVERLAP_TIMES: usize = FFT_WINDOW_SIZE / FFT_HOP_SIZE;
-const GAIN_COMPENSATION: f32 = 1.0 / (FFT_WINDOW_SIZE * FFT_OVERLAP_TIMES) as f32;
 
 pub struct FrequencySidechain {
     stft: StftHelper<SIDECHAIN_INPUTS>,
@@ -85,7 +80,7 @@ impl FrequencySidechain {
         self.stft.process_overlap_add_sidechain(
             main_buffer,
             [sidechain_buffer],
-            FFT_OVERLAP_TIMES,
+            self.overlap_times,
             // Processes each sidechain buffers' channels, then the main buffer's channels
             |channel_index, sidechain_buffer_index, real_buffer| {
                 // The sidechain buffers are be processed before the main buffer.

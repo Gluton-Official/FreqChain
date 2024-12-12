@@ -1,7 +1,6 @@
 use std::num::NonZeroU32;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use std::sync::Mutex;
 
 use nih_plug::prelude::*;
 use nih_plug_iced::IcedState;
@@ -10,12 +9,8 @@ use crate::modules::equalizer::Equalizer;
 use crate::modules::equalizer::EqualizerParams;
 use crate::modules::frequency_sidechain::FrequencySidechain;
 use crate::modules::frequency_sidechain::FrequencySidechainParams;
-use crate::modules::spectrum::Spectrum;
-use crate::modules::spectrum::SpectrumOutput;
 use crate::ui::editor;
 use crate::util::buffer_utils::BufferUtils;
-
-const SMOOTHING_DECAY_MS: f32 = 150.0;
 
 const CHANNELS: usize = 2;
 
@@ -29,19 +24,7 @@ pub struct FreqChain {
 
     sample_rate: Arc<AtomicF32>,
 
-    /// The weight to apply to the previous peak values when calculating the new peak value,
-    /// Usable for peak meter, spectrum, etc.
-    smoothing_decay_weight: f32,
-
-    input_peak_meter_value: Arc<AtomicF32>,
-    output_peak_meter_value: Arc<AtomicF32>,
-    sidechain_input_peak_meter_value: Arc<AtomicF32>,
-    sidechain_output_peak_meter_value: Arc<AtomicF32>,
-
     equalizer: Equalizer<EQ_BAND_COUNT, CHANNELS>,
-
-    sidechain_spectrum: Spectrum,
-    sidechain_spectrum_output: Arc<Mutex<SpectrumOutput>>,
 
     frequency_sidechain: FrequencySidechain,
 }
@@ -111,8 +94,6 @@ impl Plugin for FreqChain {
         editor::create(
             self.params.clone(),
             self.sample_rate.clone(),
-            self.input_peak_meter_value.clone(),
-            self.sidechain_spectrum_output.clone(),
             self.params.editor_state.clone(),
         )
     }
@@ -126,12 +107,6 @@ impl Plugin for FreqChain {
         self.sample_rate.store(buffer_config.sample_rate, Ordering::Relaxed);
 
         self.equalizer.set_sample_rate(buffer_config.sample_rate);
-
-        // After `SMOOTHING_DECAY_MS` milliseconds of silence, the peak meter's value should drop by 12 dB
-        self.smoothing_decay_weight = 0.25f32.powf((buffer_config.sample_rate * SMOOTHING_DECAY_MS / 1000.0).recip());
-
-        self.sidechain_spectrum
-            .set_smoothing_decay_weight(self.smoothing_decay_weight);
 
         context.set_latency_samples(self.frequency_sidechain.latency_samples());
 
@@ -188,24 +163,12 @@ impl Plugin for FreqChain {
 
 impl Default for FreqChain {
     fn default() -> Self {
-        let (sidechain_spectrum, sidechain_spectrum_output) = Spectrum::new();
-
         Self {
             params: Arc::new(FreqChainParams::default()),
 
             sample_rate: Arc::new(AtomicF32::new(1.0)),
 
-            smoothing_decay_weight: 1.0,
-
-            input_peak_meter_value: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
-            output_peak_meter_value: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
-            sidechain_input_peak_meter_value: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
-            sidechain_output_peak_meter_value: Arc::new(AtomicF32::new(util::MINUS_INFINITY_DB)),
-
             equalizer: Equalizer::<EQ_BAND_COUNT, CHANNELS>::default(),
-
-            sidechain_spectrum,
-            sidechain_spectrum_output: Arc::new(Mutex::new(sidechain_spectrum_output)),
 
             frequency_sidechain: FrequencySidechain::new(CHANNELS, FFT_WINDOW_SIZE, FFT_HOP_SIZE),
         }

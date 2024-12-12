@@ -2,6 +2,11 @@ use std::ops::Not;
 
 use nih_plug::prelude::*;
 
+#[derive(Default, Clone)]
+pub struct Smoother {
+    current_value: Option<f32>,
+}
+
 #[derive(Params)]
 pub struct SmootherParams {
     #[id = "attack_bypass"]
@@ -13,11 +18,6 @@ pub struct SmootherParams {
     pub decay_bypass: BoolParam,
     #[id = "decay_speed"]
     pub decay_speed: FloatParam,
-}
-
-#[derive(Default, Clone)]
-pub struct Smoother {
-    current_value: Option<f32>,
 }
 
 impl Smoother {

@@ -17,9 +17,9 @@ pub struct Equalizer<const BANDS: usize, const CHANNELS: usize> {
 }
 
 #[derive(Params)]
-pub struct EqualizerParams<const N: usize> {
+pub struct EqualizerParams<const BANDS: usize> {
     #[nested(array, group = "Band")]
-    pub bands: [BandParams; N],
+    pub bands: [BandParams; BANDS],
 
     #[id = "bypass"]
     pub bypass: BoolParam,
@@ -247,22 +247,23 @@ impl BandParams {
         }
     }
 
-    fn resonance(&self) -> f32 {
-        self.q.value()
-    }
-
-
-    fn bandwidth(&self, w0: f32) -> f32 {
-        // ((1_f32 / self.q.value()) / 2_f32).asinh() / (LN_2 / 2_f32 * w0 / w0.sin())
-        (2_f32 * w0.sin() * (2_f32 * self.q.value()).recip().asinh()) / (LN_2 * w0)
-        // (LN_2 / 2_f32 * (1_f32 / self.q.value())).sinh() * LN_2
-    }
-
-    #[allow(non_snake_case)]
-    fn shelf_slope(&self, A: f32) -> f32 {
-        // 1_f32 / (((1_f32 / self.q.value().clamp(f32::MIN, 1.0)).powi(2) - 2_f32) / A + 1_f32 / A + 1_f32)
-        (((1_f32 / self.q.value().powf(2.0)) - 2_f32) / (A + A.recip()) + 1_f32).recip()
-    }
+    // TODO: reimplement for UI
+    // fn resonance(&self) -> f32 {
+    //     self.q.value()
+    // }
+    // 
+    // 
+    // fn bandwidth(&self, w0: f32) -> f32 {
+    //     // ((1_f32 / self.q.value()) / 2_f32).asinh() / (LN_2 / 2_f32 * w0 / w0.sin())
+    //     (2_f32 * w0.sin() * (2_f32 * self.q.value()).recip().asinh()) / (LN_2 * w0)
+    //     // (LN_2 / 2_f32 * (1_f32 / self.q.value())).sinh() * LN_2
+    // }
+    // 
+    // #[allow(non_snake_case)]
+    // fn shelf_slope(&self, A: f32) -> f32 {
+    //     // 1_f32 / (((1_f32 / self.q.value().clamp(f32::MIN, 1.0)).powi(2) - 2_f32) / A + 1_f32 / A + 1_f32)
+    //     (((1_f32 / self.q.value().powf(2.0)) - 2_f32) / (A + A.recip()) + 1_f32).recip()
+    // }
 }
 
 
