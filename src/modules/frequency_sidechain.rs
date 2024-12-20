@@ -112,6 +112,7 @@ impl FrequencySidechain {
                         let (frequency_magnitude, phase) = main_bin.to_polar();
                         let mut sidechain_frequency_magnitude = sidechain_bin.norm();
 
+                        // TODO: move to where detail and precision are
                         self.smoother[channel_index][bin_index]
                             .process(&mut sidechain_frequency_magnitude, sample_rate, &params.smoother);
     

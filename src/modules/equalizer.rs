@@ -74,12 +74,12 @@ impl<const BANDS: usize, const CHANNELS: usize> Default for Equalizer<BANDS, CHA
 }
 
 impl<const BANDS: usize, const CHANNELS: usize> Equalizer<BANDS, CHANNELS> {
-    // TODO: find more eq implementation references
     pub fn process(&mut self, buffer: &mut Buffer, params: &EqualizerParams<BANDS>) {
         if params.bypass.value() && self.sample_rate.is_none() {
             return;
         }
 
+        // TODO: probably want to apply all band filters before moving to the next sample
         for (band_params, band_filter) in params.bands.iter().zip(self.biquad_filters.iter_mut()) {
             // skip processing for peak and shelf filters when gain is 0db
             if matches!(
