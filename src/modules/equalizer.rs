@@ -20,9 +20,6 @@ pub struct Equalizer<const BANDS: usize, const CHANNELS: usize> {
 pub struct EqualizerParams<const BANDS: usize> {
     #[nested(array, group = "Band")]
     pub bands: [BandParams; BANDS],
-
-    #[id = "bypass"]
-    pub bypass: BoolParam,
 }
 
 #[derive(Params)]
@@ -35,6 +32,8 @@ pub struct BandParams {
     pub q: FloatParam,
     #[id = "gain"]
     pub gain: FloatParam,
+    #[id = "bypass"]
+    pub bypass: BoolParam,
 
     dirty: Arc<AtomicBool>,
 }
@@ -75,12 +74,16 @@ impl<const BANDS: usize, const CHANNELS: usize> Default for Equalizer<BANDS, CHA
 
 impl<const BANDS: usize, const CHANNELS: usize> Equalizer<BANDS, CHANNELS> {
     pub fn process(&mut self, buffer: &mut Buffer, params: &EqualizerParams<BANDS>) {
-        if params.bypass.value() && self.sample_rate.is_none() {
+        if self.sample_rate.is_none() {
             return;
         }
 
         // TODO: probably want to apply all band filters before moving to the next sample
         for (band_params, band_filter) in params.bands.iter().zip(self.biquad_filters.iter_mut()) {
+            if band_params.bypass.value() {
+                continue;
+            }
+            
             // skip processing for peak and shelf filters when gain is 0db
             if matches!(
                 band_params.band_type.value(),
@@ -165,6 +168,8 @@ impl BandParams {
                     let dirty = dirty.clone();
                     move |_| dirty.store(true, Ordering::SeqCst)
                 })),
+            // isn't used for filter coefficients, so doesn't need callback
+            bypass: BoolParam::new(format!("{band_name} Bypass"), false),
 
             dirty,
         }
@@ -279,7 +284,6 @@ impl Default for EqualizerParams<7> {
                 BandParams::new(6, BandType::Peak, 2936.0, 1.0, 0.0),
                 BandParams::new(7, BandType::HighShelf, 6324.0, 1.0, 0.0),
             ],
-            bypass: BoolParam::new("Bypass", false),
         }
     }
 }
