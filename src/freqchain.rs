@@ -10,6 +10,7 @@ use crate::modules::equalizer::EqualizerParams;
 use crate::modules::frequency_sidechain::FrequencySidechain;
 use crate::modules::frequency_sidechain::FrequencySidechainParams;
 use crate::ui::editor;
+use crate::ui::theme::FreqChainTheme;
 use crate::util::buffer_utils::BufferUtils;
 
 const CHANNELS: usize = 2;

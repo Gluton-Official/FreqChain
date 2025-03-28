@@ -16,7 +16,8 @@ crate-type = ["cdylib", "lib"]
 
 [dependencies]
 nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", features = ["assert_process_allocs", "standalone"] }
-nih_plug_iced = { git = "https://github.com/robbert-vdh/nih-plug.git", features = ["opengl", "opengl_canvas"] }
+nih_plug_iced = { git = "https://github.com/robbert-vdh/nih-plug.git", features = ["opengl", "opengl_canvas", "tokio"] }
+atomic_refcell = "0.1.13"
 realfft = "3.3.0"
 triple_buffer = "7.0.0"
 
