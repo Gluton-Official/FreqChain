@@ -14,7 +14,7 @@ pub struct Style {
     pub font: Font,
     pub text_size: u16,
     pub text_color: Color,
-    
+
     pub label_placement: Option<Placement>,
     pub value_placement: Option<Placement>,
 
@@ -104,8 +104,8 @@ impl Default for PointerStyle {
         Self {
             draw_path: |center, rotation, scale| {
                 Path::line(center, Point {
-                    x: center.x + rotation.cos() * scale * 0.9,
-                    y: center.y + rotation.sin() * scale * 0.9,
+                    x: center.x + rotation.cos() * 0.9 * scale,
+                    y: center.y + rotation.sin() * 0.9 * scale,
                 })
             },
             stroke: Stroke::default(),
@@ -118,7 +118,7 @@ impl Default for TrackStyle {
     fn default() -> Self {
         Self {
             filled_stroke: Stroke::default(),
-            unfilled_stroke: Stroke::default().with_color(Color::BLACK.with_alpha(0.5)),
+            unfilled_stroke: Stroke::default().with_color(Color::BLACK.with_alpha(0.25)),
         }
     }
 }
@@ -126,8 +126,17 @@ impl Default for TrackStyle {
 impl Default for TickMarkStyle {
     fn default() -> Self {
         Self {
-            draw_path: |_center, _rotation, _scale| {
-                Path::line([0.0, 0.0].into(), [0.0, 0.1].into())
+            draw_path: |center, rotation, scale| {
+                Path::line(
+                    Point {
+                        x: center.x + rotation.cos() * 0.9 * scale,
+                        y: center.y + rotation.sin() * 0.9 * scale,
+                    },
+                    Point {
+                        x: center.x + rotation.cos() * scale,
+                        y: center.y + rotation.sin() * scale,
+                    }
+                )
             },
             stroke: Stroke::default(),
             values: Vec::new(),
