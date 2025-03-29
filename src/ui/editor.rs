@@ -2,12 +2,12 @@ use crate::freqchain::FreqChainParams;
 use crate::ui::theme::FreqChainTheme;
 use crate::ui::theme::Theme;
 use crate::ui::themeable::Themeable;
-use crate::ui::widgets::param_knob;
+use crate::ui::widgets::{param_knob, param_slider};
 use crate::ui::widgets::param_knob::{Anchor, ParamKnob};
 use crate::ui::ColorUtils;
 use crate::FreqChain;
 use nih_plug::prelude::*;
-use nih_plug_iced::{assets, Widget};
+use nih_plug_iced::assets;
 use nih_plug_iced::create_iced_editor;
 use nih_plug_iced::executor;
 use nih_plug_iced::widgets::ParamMessage;
@@ -25,6 +25,7 @@ use nih_plug_iced::Text;
 use nih_plug_iced::WindowQueue;
 use nih_plug_iced::alignment;
 use std::sync::Arc;
+use crate::ui::widgets::param_slider::ParamSlider;
 
 const EDITOR_WIDTH: u32 = 192;
 const EDITOR_HEIGHT: u32 = 572;
@@ -50,7 +51,7 @@ pub struct FreqChainEditor {
 
     context: Arc<dyn GuiContext>,
 
-    // sidechain_gain_state: param_slider::State,
+    sidechain_gain_state: param_slider::State,
     sidechain_detail_state: param_knob::State,
     sidechain_precision_state: param_knob::State,
 }
@@ -81,7 +82,7 @@ impl IcedEditor for FreqChainEditor {
 
             context,
 
-            // sidechain_gain_state: Default::default(),
+            sidechain_gain_state: param_slider::State::default(),
             sidechain_detail_state: param_knob::State::default(),
             sidechain_precision_state: param_knob::State::default(),
         };
@@ -142,8 +143,15 @@ impl IcedEditor for FreqChainEditor {
             }).collect())
             .align_items(Alignment::Center);
 
-        // let sidechain_gain = ParamSlider::new(&mut self.sidechain_gain_state, &self.params.sidechain_input.gain)
-        //     .map(Message::ParamUpdate);
+        let sidechain_gain = ParamSlider::new(
+            &mut self.sidechain_gain_state,
+            &self.params.sidechain_input.gain
+        )
+            .label("Gain")
+            .apply_theme(self.theme)
+            .width(26.into())
+            .height(Length::Fill)
+            .map(Message::ParamUpdate);
 
         let detail = ParamKnob::new(
             &mut self.sidechain_detail_state,
@@ -164,13 +172,15 @@ impl IcedEditor for FreqChainEditor {
             .map(Message::ParamUpdate);
 
         let frequency_sidechain = Row::new()
+            .max_height(190)
             .push(frequency_sidechain_label)
-            // .push(sidechain_gain)
+            .spacing(14)
+            .push(sidechain_gain)
             .push(
                 Column::new()
                     .align_items(Alignment::Fill)
-                    .width(Length::Fill)
-                    .max_height(190)
+                    .width(Length::FillPortion(2))
+                    .height(Length::Fill)
                     .spacing(4)
                     .push(detail)
                     .push(precision)

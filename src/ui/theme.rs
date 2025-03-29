@@ -1,8 +1,11 @@
+use nih_plug::prelude::FloatRange;
+use nih_plug::util;
 use nih_plug_iced::{assets, rule, text_input, Background, Color, Font};
-use nih_plug_iced::canvas::Stroke;
+use nih_plug_iced::canvas::{Path, Stroke};
 use crate::ui::ColorUtils;
-use crate::ui::widgets::param_knob;
-use crate::ui::widgets::param_knob::{KnobStyle, PointerStyle, TrackStyle};
+use crate::ui::widgets::{param_knob, param_slider};
+use crate::ui::widgets::param_knob::{KnobStyle, PointerStyle};
+use crate::ui::widgets::param_slider::{HandleStyle};
 use crate::ui::widgets::value_input::TextInputStyle;
 
 #[derive(Clone, Copy)]
@@ -71,11 +74,11 @@ impl param_knob::StyleSheet for Theme {
                 
                 ..PointerStyle::default()
             }),
-            track: Some(TrackStyle {
+            track: Some(param_knob::TrackStyle {
                 filled_stroke: Stroke::default().with_color(self.foreground),
                 unfilled_stroke: Stroke::default().with_color(self.foreground.with_alpha(0.25)),
                 
-                ..TrackStyle::default()
+                ..param_knob::TrackStyle::default()
             }),
             text_input: TextInputStyle {
                 background: self.background.lerp_to_inverse(0.1).into(),
@@ -96,7 +99,7 @@ impl param_knob::StyleSheet for Theme {
             knob: Some(KnobStyle {
                 fill: Some(self.background.lerp_to(self.foreground, 0.25).into()),
                 
-                ..self.style().knob.unwrap()
+                ..self.style().knob.unwrap_or_default()
             }),
             
             ..self.style()
@@ -104,3 +107,73 @@ impl param_knob::StyleSheet for Theme {
     }
 }
 
+impl param_slider::StyleSheet for Theme {
+    fn style(&self) -> param_slider::Style {
+        param_slider::Style {
+            font: self.font,
+            text_size: self.text_size,
+            text_color: self.foreground,
+            text_padding: 7.0,
+
+            handle: Some(HandleStyle {
+                stroke: Stroke::default().with_color(self.foreground),
+                fill: Some(self.background.into()),
+
+                ..HandleStyle::default()
+            }),
+            track: Some(param_slider::TrackStyle {
+                filled_stroke: Stroke::default().with_color(self.foreground).with_width(4.0),
+                unfilled_stroke: Stroke::default().with_color(self.foreground.with_alpha(0.25)),
+
+                ..param_slider::TrackStyle::default()
+            }),
+            
+            major_tick_marks: Some(param_slider::TickMarkStyle {
+                values: vec![FloatRange::Skewed {
+                    min: util::db_to_gain(util::MINUS_INFINITY_DB),
+                    max: util::db_to_gain(24.0),
+                    factor: FloatRange::gain_skew_factor(util::MINUS_INFINITY_DB, 24.0)  
+                }.normalize(util::db_to_gain(0.0))],
+                stroke: Stroke::default().with_color(self.foreground),
+                
+                ..param_slider::TickMarkStyle::default()
+            }),
+            minor_tick_marks: Some(param_slider::TickMarkStyle {
+                values: vec![0.0, 1.0],
+                stroke: Stroke::default().with_color(self.foreground),
+                draw_path: |orientation, center, scale| {
+                    match orientation {
+                        param_slider::Orientation::Vertical => Path::line([center.x - 0.25 * scale, center.y].into(), [center.x + 0.25 * scale, center.y].into()),
+                        param_slider::Orientation::Horizontal => Path::line([center.x, center.y - 0.25 * scale].into(), [center.x, center.y + 0.25 * scale].into())
+                    }
+                },
+
+                ..param_slider::TickMarkStyle::default()
+            }),
+            
+            text_input: TextInputStyle {
+                background: self.background.lerp_to_inverse(0.1).into(),
+                border_color: self.background.lerp_to_inverse(0.25),
+                value_color: self.foreground,
+                placeholder_color: self.foreground.with_alpha(0.5),
+                selection_color: self.foreground.with_alpha(0.5),
+
+                ..TextInputStyle::default()
+            },
+
+            ..param_slider::Style::default()
+        }
+    }
+
+    fn hovered(&self) -> param_slider::Style {
+        param_slider::Style {
+            handle: Some(HandleStyle {
+                fill: Some(self.background.lerp_to(self.foreground, 0.25).into()),
+
+                ..self.style().handle.unwrap_or_default()
+            }),
+
+            ..self.style()
+        }
+    }
+}
