@@ -53,7 +53,6 @@ pub enum Anchor {
     Center
 }
 
-
 /// State for a [`ParamKnob`].
 #[derive(Debug, Default)]
 pub struct State {
@@ -63,15 +62,6 @@ pub struct State {
     /// and normalized value when granular dragging. [None] when not dragging.
     drag_state: AtomicRefCell<Option<DragState>>,
 
-    // /// Will be set to `true` if we're dragging the parameter. Resetting the parameter or entering a
-    // /// text value should not initiate a drag.
-    // drag_active: bool,
-    // /// We keep track of the start coordinate and normalized value holding down Shift while dragging
-    // /// for higher precision dragging. This is a `None` value when granular dragging is not active.
-    // drag_start_y_and_value: Option<(f32, f32)>,
-    // /// We keep track of the start coordinate and normalized value holding down Shift while dragging
-    // /// for higher precision dragging. This is a `None` value when granular dragging is not active.
-    // granular_drag_start_y_and_value: Option<(f32, f32)>,
     /// Track clicks for double clicks.
     last_click: Option<mouse::Click>,
 
