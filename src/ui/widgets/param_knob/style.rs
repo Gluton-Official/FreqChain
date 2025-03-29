@@ -14,6 +14,7 @@ pub struct Style {
     pub font: Font,
     pub text_size: u16,
     pub text_color: Color,
+    pub text_padding: f32,
 
     pub label_placement: Option<Placement>,
     pub value_placement: Option<Placement>,
@@ -69,6 +70,7 @@ impl Default for Style {
             font: Font::default(),
             text_size: 12,
             text_color: Color::BLACK,
+            text_padding: 4.0,
             
             label_placement: Some(Placement::Below),
             value_placement: Some(Placement::Above),

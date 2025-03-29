@@ -150,8 +150,7 @@ impl<'a, P: Param> Widget<ParamMessage, Renderer> for ParamKnob<'a, P> {
             self.style_sheet.style()
         };
        
-        let text_padding = 1f32;
-        let text_height = style.text_size as f32 + text_padding * 2.0;
+        let text_height = style.text_size as f32 + style.text_padding;
         let mut knob_offset_y = 0.0;
         let mut knob_available_height = bounds.height;
         match style.label_placement {
@@ -252,8 +251,8 @@ impl<'a, P: Param> Widget<ParamMessage, Renderer> for ParamKnob<'a, P> {
             let mut frame = canvas::Frame::new(viewport.size());
             
             let label_position = match label_placement {
-                Placement::Above => knob_bounds.y - text_padding,
-                Placement::Below => knob_bounds.y + knob_bounds.height + text_padding
+                Placement::Above => knob_bounds.y - style.text_padding,
+                Placement::Below => knob_bounds.y + knob_bounds.height + style.text_padding
             };
 
             let label = Text {
@@ -278,8 +277,8 @@ impl<'a, P: Param> Widget<ParamMessage, Renderer> for ParamKnob<'a, P> {
             let mut frame = canvas::Frame::new(viewport.size());
 
             let value_position = match value_placement {
-                Placement::Above => knob_bounds.y - text_padding,
-                Placement::Below => knob_bounds.y + knob_bounds.height + text_padding
+                Placement::Above => knob_bounds.y - style.text_padding,
+                Placement::Below => knob_bounds.y + knob_bounds.height + style.text_padding
             };
 
             let value = Text {
