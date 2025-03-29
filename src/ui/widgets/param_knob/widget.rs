@@ -30,13 +30,6 @@ use crate::ui::widgets::input::DragState;
 use crate::ui::widgets::param_knob::Placement;
 use crate::ui::widgets::param_knob::style::StyleSheet;
 
-/// When dragging a parameter, one pixel dragged corresponds to this much change in the normalized parameter
-// const DRAG_SCALE: f32 = 0.005;
-
-/// When shift+dragging a parameter, one pixel dragged corresponds to [DRAG_SCALE] times this much change in the
-/// normalized parameter.
-// const GRANULAR_DRAG_MULTIPLIER: f32 = 0.1;
-
 /// A knob that integrates with NIH-plug's [`Param`] types.
 pub struct ParamKnob<'a, P: Param> {
     state: &'a mut State,
