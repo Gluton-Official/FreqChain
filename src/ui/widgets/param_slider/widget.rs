@@ -351,8 +351,8 @@ impl<'a, P: Param> ParamSlider<'a, P> {
 
             param,
 
-            width: Length::Units(180),
-            height: Length::Units(30),
+            width: Length::Units(30),
+            height: Length::Units(180),
             text_size: None,
             font: <Renderer as TextRenderer>::Font::default(),
             anchor: Anchor::Min,
