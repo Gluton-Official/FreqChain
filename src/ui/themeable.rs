@@ -3,6 +3,7 @@ use nih_plug::params::Param;
 use crate::ui::theme::Theme;
 use crate::ui::widgets::param_knob::ParamKnob;
 use crate::ui::widgets::param_slider::ParamSlider;
+use crate::ui::widgets::param_toggle::ParamToggle;
 
 pub trait Themeable {
     fn apply_theme(self, theme: Theme) -> Self;
@@ -33,4 +34,10 @@ impl<P: Param> Themeable for ParamSlider<'_, P> {
     fn apply_theme(self, theme: Theme) -> Self {
         self.style(theme)
     }   
+}
+
+impl<P: Param> Themeable for ParamToggle<'_, P> {
+    fn apply_theme(self, theme: Theme) -> Self {
+        self.style(theme)
+    }
 }

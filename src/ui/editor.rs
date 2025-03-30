@@ -26,6 +26,7 @@ use nih_plug_iced::WindowQueue;
 use nih_plug_iced::alignment;
 use std::sync::Arc;
 use crate::ui::widgets::param_slider::ParamSlider;
+use crate::ui::widgets::param_toggle::ParamToggle;
 
 const EDITOR_WIDTH: u32 = 192;
 const EDITOR_HEIGHT: u32 = 572;
@@ -152,6 +153,20 @@ impl IcedEditor for FreqChainEditor {
             .width(26.into())
             .height(Length::Fill)
             .map(Message::ParamUpdate);
+        
+        let mono_toggle = ParamToggle::new(
+            &self.params.mono_processing,
+        )
+            .label("Mono")
+            .apply_theme(self.theme)
+            .width(Length::Fill)
+            .height(30.into())
+            .map(Message::ParamUpdate);
+        let mono_group = Row::new()
+            .align_items(Alignment::Center)
+            .height(Length::Fill)
+            .width(Length::FillPortion(1))
+            .push(mono_toggle);
 
         let detail = ParamKnob::new(
             &mut self.sidechain_detail_state,
@@ -176,6 +191,7 @@ impl IcedEditor for FreqChainEditor {
             .push(frequency_sidechain_label)
             .spacing(14)
             .push(sidechain_gain)
+            .push(mono_group)
             .push(
                 Column::new()
                     .align_items(Alignment::Fill)

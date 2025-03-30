@@ -1,11 +1,11 @@
 use nih_plug::prelude::FloatRange;
 use nih_plug::util;
-use nih_plug_iced::{assets, rule, text_input, Background, Color, Font};
+use nih_plug_iced::{assets, rule, text_input, Background, Button, Color, Font};
 use nih_plug_iced::canvas::{Path, Stroke};
 use crate::ui::ColorUtils;
-use crate::ui::widgets::{param_knob, param_slider};
+use crate::ui::widgets::{param_knob, param_slider, param_toggle};
 use crate::ui::widgets::param_knob::{KnobStyle, PointerStyle};
-use crate::ui::widgets::param_slider::{HandleStyle};
+use crate::ui::widgets::param_toggle::ButtonStyle;
 use crate::ui::widgets::value_input::TextInputStyle;
 
 #[derive(Clone, Copy)]
@@ -115,11 +115,11 @@ impl param_slider::StyleSheet for Theme {
             text_color: self.foreground,
             text_padding: 7.0,
 
-            handle: Some(HandleStyle {
+            handle: Some(param_slider::HandleStyle {
                 stroke: Stroke::default().with_color(self.foreground),
                 fill: Some(self.background.into()),
 
-                ..HandleStyle::default()
+                ..param_slider::HandleStyle::default()
             }),
             track: Some(param_slider::TrackStyle {
                 filled_stroke: Stroke::default().with_color(self.foreground).with_width(4.0),
@@ -127,15 +127,15 @@ impl param_slider::StyleSheet for Theme {
 
                 ..param_slider::TrackStyle::default()
             }),
-            
+
             major_tick_marks: Some(param_slider::TickMarkStyle {
                 values: vec![FloatRange::Skewed {
                     min: util::db_to_gain(util::MINUS_INFINITY_DB),
                     max: util::db_to_gain(24.0),
-                    factor: FloatRange::gain_skew_factor(util::MINUS_INFINITY_DB, 24.0)  
+                    factor: FloatRange::gain_skew_factor(util::MINUS_INFINITY_DB, 24.0)
                 }.normalize(util::db_to_gain(0.0))],
                 stroke: Stroke::default().with_color(self.foreground),
-                
+
                 ..param_slider::TickMarkStyle::default()
             }),
             minor_tick_marks: Some(param_slider::TickMarkStyle {
@@ -150,7 +150,7 @@ impl param_slider::StyleSheet for Theme {
 
                 ..param_slider::TickMarkStyle::default()
             }),
-            
+
             text_input: TextInputStyle {
                 background: self.background.lerp_to_inverse(0.1).into(),
                 border_color: self.background.lerp_to_inverse(0.25),
@@ -167,11 +167,63 @@ impl param_slider::StyleSheet for Theme {
 
     fn hovered(&self) -> param_slider::Style {
         param_slider::Style {
-            handle: Some(HandleStyle {
+            handle: Some(param_slider::HandleStyle {
                 fill: Some(self.background.lerp_to(self.foreground, 0.25).into()),
 
                 ..self.style().handle.unwrap_or_default()
             }),
+
+            ..self.style()
+        }
+    }
+}
+
+impl param_toggle::StyleSheet for Theme {
+    fn style(&self) -> param_toggle::Style {
+        param_toggle::Style {
+            font: self.font,
+            text_size: self.text_size,
+            text_color: self.foreground,
+            text_padding: 7.0,
+            
+            button: Some(ButtonStyle {
+                stroke: Stroke::default().with_color(Color::TRANSPARENT),
+                fill: Some(self.background.lerp_to_inverse(0.10).into()),
+                
+                ..ButtonStyle::default()
+            }),
+            
+            ..param_toggle::Style::default()
+        }
+    }
+    
+    fn hovered(&self) -> param_toggle::Style {
+        param_toggle::Style {
+            button: Some(ButtonStyle {
+                fill: Some(self.background.lerp_to_inverse(0.25).into()),
+                
+                ..self.style().button.unwrap_or_default()
+            }),
+            
+            ..self.style()
+        }
+    }
+    
+    fn active(&self) -> param_toggle::Style {
+        param_toggle::Style {
+            button: Some(ButtonStyle {
+                fill: Some(self.background.lerp_to_inverse(0.5).into()),
+
+                ..self.style().button.unwrap_or_default()
+            }),
+
+            ..self.style()
+        }
+    }
+    
+    fn disabled(&self) -> param_toggle::Style {
+        param_toggle::Style {
+            text_color: self.foreground.lerp_to_inverse(0.5),
 
             ..self.style()
         }
