@@ -36,7 +36,10 @@ impl<P: Param> Themeable for ParamSlider<'_, P> {
     }   
 }
 
-impl<P: Param> Themeable for ParamToggle<'_, P> {
+impl<P: Param> Themeable for ParamToggle<'_, P>
+where
+    P::Plain: Copy
+{
     fn apply_theme(self, theme: Theme) -> Self {
         self.style(theme)
     }

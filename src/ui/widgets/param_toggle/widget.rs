@@ -11,7 +11,10 @@ use nih_plug_iced::widgets::ParamMessage;
 use crate::ui::widgets::param_toggle::{Placement, StyleSheet};
 
 /// A toggle that integrates with NIH-plug's [`Param`] types.
-pub struct ParamToggle<'a, P: Param> {
+pub struct ParamToggle<'a, P: Param>
+where
+    P::Plain: Copy
+{
     param: &'a P,
 
     width: Length,
@@ -19,11 +22,17 @@ pub struct ParamToggle<'a, P: Param> {
     text_size: Option<u16>,
     font: Font,
     label: String,
-    
+
+    associated_value: Option<P::Plain>,
+    set_associated_value_only: bool,
+
     style_sheet: Box<dyn StyleSheet + 'a>
 }
 
-impl<'a, P: Param> Widget<ParamMessage, Renderer> for ParamToggle<'a, P> {
+impl<'a, P: Param> Widget<ParamMessage, Renderer> for ParamToggle<'a, P>
+where
+    P::Plain: Copy
+{
     fn width(&self) -> Length {
         self.width
     }
@@ -85,7 +94,11 @@ impl<'a, P: Param> Widget<ParamMessage, Renderer> for ParamToggle<'a, P> {
 
         let is_hovering = bounds.contains(cursor_position);
 
-        let style = if self.param.modulated_normalized_value() > 0.5 {
+        let is_active = self.associated_value
+            .map(|value| value == self.param.modulated_plain_value())
+            .unwrap_or(self.param.modulated_normalized_value() >= 0.5);
+
+        let style = if is_active {
             self.style_sheet.active()
         } else if is_hovering {
             self.style_sheet.hovered()
@@ -159,7 +172,10 @@ impl<'a, P: Param> Widget<ParamMessage, Renderer> for ParamToggle<'a, P> {
     }
 }
 
-impl<'a, P: Param> ParamToggle<'a, P> {
+impl<'a, P: Param> ParamToggle<'a, P>
+where
+    P::Plain: Copy
+{
     /// Creates a new [`ParamSlider`] for the given parameter.
     pub fn new(param: &'a P) -> Self {
         Self {
@@ -171,7 +187,10 @@ impl<'a, P: Param> ParamToggle<'a, P> {
             font: <Renderer as TextRenderer>::Font::default(),
             
             label: param.name().into(),
-            
+
+            associated_value: None,
+            set_associated_value_only: false,
+
             style_sheet: Default::default(),
         }
     }
@@ -210,6 +229,17 @@ impl<'a, P: Param> ParamToggle<'a, P> {
         self
     }
 
+    pub fn associated_value(mut self, value: P::Plain) -> Self {
+        self.associated_value = Some(value);
+        self
+    }
+
+    pub fn associated_value_exclusive(mut self, value: P::Plain) -> Self {
+        self.associated_value = Some(value);
+        self.set_associated_value_only = true;
+        self
+    }
+
     /// Set the normalized value for a parameter if that would change the parameter's plain value
     /// (to avoid unnecessary duplicate parameter changes). The begin- and end set parameter
     /// messages need to be sent before calling this function.
@@ -226,6 +256,17 @@ impl<'a, P: Param> ParamToggle<'a, P> {
             ));
         }
     }
+
+    fn set_plain_value(&self, shell: &mut Shell<'_, ParamMessage>, plain_value: P::Plain) {
+        let current_plain_value = self.param.modulated_plain_value();
+        if plain_value != current_plain_value {
+            let normalized_plain_value = self.param.preview_normalized(plain_value);
+            shell.publish(ParamMessage::SetParameterNormalized(
+                self.param.as_ptr(),
+                normalized_plain_value,
+            ))
+        }
+    }
     
     fn handle_input_event(
         &mut self,
@@ -238,11 +279,21 @@ impl<'a, P: Param> ParamToggle<'a, P> {
             Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
             | Event::Touch(touch::Event::FingerPressed { .. }) => {
                 if bounds.contains(cursor_position) {
-                    shell.publish(ParamMessage::BeginSetParameter(self.param.as_ptr()));
-                    self.set_normalized_value(shell, if self.param.modulated_normalized_value() >= 0.5 { 0.0 } else { 1.0 });
-                    shell.publish(ParamMessage::BeginSetParameter(self.param.as_ptr()));
+                    if self.associated_value.is_some() && self.set_associated_value_only {
+                        if self.param.modulated_plain_value() != self.associated_value.unwrap() {
+                            shell.publish(ParamMessage::BeginSetParameter(self.param.as_ptr()));
+                            self.set_plain_value(shell, self.associated_value.unwrap());
+                            shell.publish(ParamMessage::BeginSetParameter(self.param.as_ptr()));
 
-                    return Some(event::Status::Captured);
+                            return Some(event::Status::Captured)
+                        }
+                    } else {
+                        shell.publish(ParamMessage::BeginSetParameter(self.param.as_ptr()));
+                        self.set_normalized_value(shell, 1.0 - self.param.modulated_normalized_value().round());
+                        shell.publish(ParamMessage::BeginSetParameter(self.param.as_ptr()));
+
+                        return Some(event::Status::Captured)
+                    }
                 }
             }
             _ => {}
@@ -260,7 +311,10 @@ impl<'a, P: Param> ParamToggle<'a, P> {
     }
 }
 
-impl<'a, P: Param> From<ParamToggle<'a, P>> for Element<'a, ParamMessage> {
+impl<'a, P: Param> From<ParamToggle<'a, P>> for Element<'a, ParamMessage>
+where
+    P::Plain: Copy
+{
     fn from(widget: ParamToggle<'a, P>) -> Self {
         Element::new(widget)
     }

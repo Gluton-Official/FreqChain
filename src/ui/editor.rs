@@ -153,20 +153,34 @@ impl IcedEditor for FreqChainEditor {
             .width(26.into())
             .height(Length::Fill)
             .map(Message::ParamUpdate);
-        
+
+        // TODO: change mono_processing to stereo_mode enum
         let mono_toggle = ParamToggle::new(
             &self.params.mono_processing,
         )
             .label("Mono")
+            .associated_value(true)
             .apply_theme(self.theme)
             .width(Length::Fill)
             .height(30.into())
             .map(Message::ParamUpdate);
+        let stereo_toggle = ParamToggle::new(
+            &self.params.mono_processing,
+        )
+            .label("Stereo")
+            .associated_value(false)
+            .apply_theme(self.theme)
+            .width(Length::Fill)
+            .height(30.into())
+            .map(Message::ParamUpdate);
+        
         let mono_group = Row::new()
             .align_items(Alignment::Center)
             .height(Length::Fill)
             .width(Length::FillPortion(1))
-            .push(mono_toggle);
+            .push(Column::with_children(
+                vec![mono_toggle, stereo_toggle]
+            ));
 
         let detail = ParamKnob::new(
             &mut self.sidechain_detail_state,
