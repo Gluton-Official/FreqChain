@@ -4,9 +4,9 @@ use nih_plug::prelude::Param;
 
 use nih_plug_iced::backend::Renderer;
 use nih_plug_iced::text::Renderer as TextRenderer;
-use nih_plug_iced::{canvas, event, layout, mouse, renderer, touch, Clipboard, Element, Event, Font, Layout, Length, Point, Rectangle, Shell, Size, Widget};
+use nih_plug_iced::{canvas, event, layout, mouse, renderer, touch, Clipboard, Element, Event, Font, Layout, Length, Point, Rectangle, Shell, Size, Vector, Widget};
 use nih_plug_iced::alignment::{Horizontal, Vertical};
-use nih_plug_iced::canvas::Text;
+use nih_plug_iced::canvas::{Path, Text};
 use nih_plug_iced::widgets::ParamMessage;
 use crate::ui::widgets::param_toggle::{Placement, StyleSheet};
 
@@ -26,7 +26,7 @@ where
     associated_value: Option<P::Plain>,
     set_associated_value_only: bool,
 
-    style_sheet: Box<dyn StyleSheet + 'a>
+    style_sheet: Box<dyn StyleSheet + 'a>,
 }
 
 impl<'a, P: Param> Widget<ParamMessage, Renderer> for ParamToggle<'a, P>

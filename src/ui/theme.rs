@@ -1,6 +1,7 @@
+use std::ops::Sub;
 use nih_plug::prelude::FloatRange;
 use nih_plug::util;
-use nih_plug_iced::{assets, rule, text_input, Background, Button, Color, Font};
+use nih_plug_iced::{assets, rule, text_input, Background, Button, Color, Font, Point, Size, Vector};
 use nih_plug_iced::canvas::{Path, Stroke};
 use crate::ui::ColorUtils;
 use crate::ui::widgets::{param_knob, param_slider, param_toggle};
@@ -226,6 +227,75 @@ impl param_toggle::StyleSheet for Theme {
             text_color: self.foreground.lerp_to_inverse(0.5),
 
             ..self.style()
+        }
+    }
+}
+
+impl Theme {
+    pub fn mono_toggle<'a>(self, mono_mode: bool) -> impl Into<Box<dyn param_toggle::StyleSheet + 'a>> {
+        fn circle_radius(scale: Vector) -> f32 {
+            let min = f32::min(scale.x, scale.y);
+            1.0 / 3.0 * min
+        }
+
+        struct MonoToggle {
+            theme: Theme,
+            mono_mode: bool,
+        }
+        impl param_toggle::StyleSheet for MonoToggle {
+            fn style(&self) -> param_toggle::Style {
+                param_toggle::Style {
+                    label_placement: None,
+
+                    button: Some(ButtonStyle {
+                        draw_path: match self.mono_mode {
+                            true => |_value, center, scale| {
+                                Path::circle(center, circle_radius(scale))
+                            },
+                            false => |_value, center, scale| {
+                                let radius = circle_radius(scale);
+                                let offset = Vector::new(radius * 2.0 / 3.0, 0.0);
+                                Path::new(|path| {
+                                    path.circle(center - offset, radius);
+                                    path.circle(center + offset, radius);
+                                })
+                            },
+                        },
+                        stroke: Stroke::default().with_color(self.theme.foreground.lerp_to_inverse(0.50)),
+                        fill: None,
+                    }),
+
+                    ..<Theme as param_toggle::StyleSheet>::style(&self.theme)
+                }
+            }
+
+            fn hovered(&self) -> param_toggle::Style {
+                param_toggle::Style {
+                    button: Some(ButtonStyle {
+                        stroke: Stroke::default().with_color(self.theme.foreground.lerp_to_inverse(0.25)),
+
+                        ..self.style().button.unwrap_or(<Theme as param_toggle::StyleSheet>::style(&self.theme).button.unwrap_or_default())
+                    }),
+
+                    ..self.style()
+                }
+            }
+
+            fn active(&self) -> param_toggle::Style {
+                param_toggle::Style {
+                    button: Some(ButtonStyle {
+                        stroke: Stroke::default().with_color(self.theme.foreground),
+
+                        ..self.style().button.unwrap_or(<Theme as param_toggle::StyleSheet>::style(&self.theme).button.unwrap_or_default())
+                    }),
+
+                    ..self.style()
+                }
+            }
+        }
+        MonoToggle {
+            theme: self,
+            mono_mode
         }
     }
 }

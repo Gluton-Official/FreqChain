@@ -4,10 +4,10 @@ use crate::ui::theme::Theme;
 use crate::ui::themeable::Themeable;
 use crate::ui::widgets::{param_knob, param_slider};
 use crate::ui::widgets::param_knob::{Anchor, ParamKnob};
-use crate::ui::ColorUtils;
+use crate::ui::{ColorUtils, PaddingExt};
 use crate::FreqChain;
 use nih_plug::prelude::*;
-use nih_plug_iced::assets;
+use nih_plug_iced::{assets, Padding, Vector};
 use nih_plug_iced::create_iced_editor;
 use nih_plug_iced::executor;
 use nih_plug_iced::widgets::ParamMessage;
@@ -25,6 +25,7 @@ use nih_plug_iced::Text;
 use nih_plug_iced::WindowQueue;
 use nih_plug_iced::alignment;
 use std::sync::Arc;
+use nih_plug_iced::canvas::Path;
 use crate::ui::widgets::param_slider::ParamSlider;
 use crate::ui::widgets::param_toggle::ParamToggle;
 
@@ -142,7 +143,8 @@ impl IcedEditor for FreqChainEditor {
                     .height(10.into())
                     .into()
             }).collect())
-            .align_items(Alignment::Center);
+            .align_items(Alignment::Center)
+            .padding(Padding::right(14));
 
         let sidechain_gain = ParamSlider::new(
             &mut self.sidechain_gain_state,
@@ -160,27 +162,19 @@ impl IcedEditor for FreqChainEditor {
         )
             .label("Mono")
             .associated_value(true)
-            .apply_theme(self.theme)
-            .width(Length::Fill)
-            .height(30.into())
+            .style(self.theme.mono_toggle(true))
+            .width(30.into())
+            .height(20.into())
             .map(Message::ParamUpdate);
         let stereo_toggle = ParamToggle::new(
             &self.params.mono_processing,
         )
             .label("Stereo")
             .associated_value(false)
-            .apply_theme(self.theme)
-            .width(Length::Fill)
-            .height(30.into())
+            .style(self.theme.mono_toggle(false))
+            .width(30.into())
+            .height(20.into())
             .map(Message::ParamUpdate);
-        
-        let mono_group = Row::new()
-            .align_items(Alignment::Center)
-            .height(Length::Fill)
-            .width(Length::FillPortion(1))
-            .push(Column::with_children(
-                vec![mono_toggle, stereo_toggle]
-            ));
 
         let detail = ParamKnob::new(
             &mut self.sidechain_detail_state,
@@ -201,15 +195,21 @@ impl IcedEditor for FreqChainEditor {
             .map(Message::ParamUpdate);
 
         let frequency_sidechain = Row::new()
+            .width(Length::Fill)
             .max_height(190)
             .push(frequency_sidechain_label)
-            .spacing(14)
             .push(sidechain_gain)
-            .push(mono_group)
+            .push(Row::new()
+                .padding(Padding::left(14))
+                .align_items(Alignment::Center)
+                .width(Length::FillPortion(1))
+                .height(Length::Fill)
+                .push(Column::with_children(vec![mono_toggle, stereo_toggle]))
+            )
             .push(
                 Column::new()
                     .align_items(Alignment::Fill)
-                    .width(Length::FillPortion(2))
+                    .width(Length::FillPortion(3))
                     .height(Length::Fill)
                     .spacing(4)
                     .push(detail)
