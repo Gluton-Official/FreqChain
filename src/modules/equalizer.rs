@@ -38,7 +38,7 @@ pub struct BandParams {
     dirty: Arc<AtomicBool>,
 }
 
-#[derive(Enum, Debug, PartialEq)]
+#[derive(Enum, Debug, Copy, Clone, PartialEq)]
 pub enum BandType {
     #[id = "peak"]
     Peak,
@@ -149,7 +149,7 @@ impl BandParams {
             q: FloatParam::new(
                 format!("{band_name} Q"),
                 q,
-                FloatRange::Skewed { min: 0.1, max: 18.0, factor: FloatRange::skew_factor(-2.0) }
+                FloatRange::SymmetricalSkewed { min: 0.1, max: 18.0, factor: FloatRange::skew_factor(-2.0), center: 1.0 }
             )
                 .with_step_size(0.01)
                 .with_callback(Arc::new({

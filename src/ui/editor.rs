@@ -7,7 +7,7 @@ use crate::ui::widgets::param_knob::{Anchor, ParamKnob};
 use crate::ui::{ColorUtils, PaddingExt};
 use crate::FreqChain;
 use nih_plug::prelude::*;
-use nih_plug_iced::{assets, Padding, Vector};
+use nih_plug_iced::{assets, Padding, Space, Vector};
 use nih_plug_iced::create_iced_editor;
 use nih_plug_iced::executor;
 use nih_plug_iced::widgets::ParamMessage;
@@ -25,7 +25,9 @@ use nih_plug_iced::Text;
 use nih_plug_iced::WindowQueue;
 use nih_plug_iced::alignment;
 use std::sync::Arc;
+use nih_plug_iced::backend::Renderer;
 use nih_plug_iced::canvas::Path;
+use crate::modules::equalizer::BandType;
 use crate::ui::widgets::param_slider::ParamSlider;
 use crate::ui::widgets::param_toggle::ParamToggle;
 
@@ -56,6 +58,13 @@ pub struct FreqChainEditor {
     sidechain_gain_state: param_slider::State,
     sidechain_detail_state: param_knob::State,
     sidechain_precision_state: param_knob::State,
+
+    smoother_attack_state: param_knob::State,
+    smoother_decay_state: param_knob::State,
+
+    band_gain_state: param_slider::State,
+    band_frequency_state: param_knob::State,
+    band_q_state: param_knob::State,
 }
 
 /// Messages to be sent to the editor UI
@@ -87,6 +96,13 @@ impl IcedEditor for FreqChainEditor {
             sidechain_gain_state: param_slider::State::default(),
             sidechain_detail_state: param_knob::State::default(),
             sidechain_precision_state: param_knob::State::default(),
+
+            smoother_attack_state: param_knob::State::default(),
+            smoother_decay_state: param_knob::State::default(),
+
+            band_gain_state: param_slider::State::default(),
+            band_frequency_state: param_knob::State::default(),
+            band_q_state: param_knob::State::default(),
         };
 
         (editor, Command::none())
@@ -105,6 +121,19 @@ impl IcedEditor for FreqChainEditor {
     }
 
     fn view(&mut self) -> Element<'_, Self::Message> {
+        let vertical_label = |text: &str| {
+            Column::<Self::Message>::with_children(
+                text.chars().map(|char| {
+                    Text::new(char)
+                        .apply_theme(self.theme)
+                        .color(self.theme.foreground.with_alpha(0.5))
+                        .height(10.into())
+                        .into()
+                }).collect()
+            )
+                .align_items(Alignment::Center)
+        };
+
         let author = Text::new(FreqChain::VENDOR.to_ascii_uppercase())
             .apply_theme(self.theme)
             .width(Length::FillPortion(1))
@@ -124,8 +153,8 @@ impl IcedEditor for FreqChainEditor {
             .vertical_alignment(alignment::Vertical::Center);
 
         let header = Column::new()
-            .align_items(Alignment::Center)
             .width(Length::Fill)
+            .align_items(Alignment::Center)
             .spacing(2)
             .push(
                 Row::new()
@@ -135,15 +164,7 @@ impl IcedEditor for FreqChainEditor {
             )
             .push(title);
 
-        let frequency_sidechain_label = Column::with_children(
-            "FREQUENCY SIDECHAIN".chars().map(|char| {
-                Text::new(char)
-                    .apply_theme(self.theme)
-                    .color(self.theme.foreground.with_alpha(0.5))
-                    .height(10.into())
-                    .into()
-            }).collect())
-            .align_items(Alignment::Center)
+        let frequency_sidechain_label = vertical_label("FREQUENCY_SIDECHAIN")
             .padding(Padding::right(14));
 
         let sidechain_gain = ParamSlider::new(
@@ -151,7 +172,14 @@ impl IcedEditor for FreqChainEditor {
             &self.params.sidechain_input.gain
         )
             .label("Gain")
-            .apply_theme(self.theme)
+            .style(self.theme.slider(
+                FloatRange::Skewed {
+                    min: util::db_to_gain(util::MINUS_INFINITY_DB),
+                    max: util::db_to_gain(24.0),
+                    factor: FloatRange::gain_skew_factor(util::MINUS_INFINITY_DB, 24.0)
+                }
+                    .normalize(util::db_to_gain(0.0))
+            ))
             .width(26.into())
             .height(Length::Fill)
             .map(Message::ParamUpdate);
@@ -191,12 +219,13 @@ impl IcedEditor for FreqChainEditor {
             .apply_theme(self.theme)
             .width(Length::Fill)
             .height(Length::FillPortion(1))
-            .alignment(Anchor::Center)
+            .anchor(Anchor::Center)
             .map(Message::ParamUpdate);
 
         let frequency_sidechain = Row::new()
             .width(Length::Fill)
             .max_height(190)
+            .align_items(Alignment::Center)
             .push(frequency_sidechain_label)
             .push(sidechain_gain)
             .push(Row::new()
@@ -206,25 +235,306 @@ impl IcedEditor for FreqChainEditor {
                 .height(Length::Fill)
                 .push(Column::with_children(vec![mono_toggle, stereo_toggle]))
             )
-            .push(
-                Column::new()
-                    .align_items(Alignment::Fill)
-                    .width(Length::FillPortion(3))
+            .push(Column::new()
+                .align_items(Alignment::Fill)
+                .width(Length::FillPortion(3))
+                .height(Length::Fill)
+                .spacing(4)
+                .push(detail)
+                .push(precision)
+            );
+
+        let smoother_label: Element<Message> = Element::<Message>::from(vertical_label("SMOOTHER")
+            .padding(Padding::right(8)))
+            // .explain(Color::from_rgb8(0, 255, 255))
+            ;
+
+        let attack_label = Element::<Message>::from(Text::new("Attack")
+            .apply_theme(self.theme)
+            .width(Length::Fill)
+            .horizontal_alignment(alignment::Horizontal::Center)
+            .vertical_alignment(alignment::Vertical::Center))
+            // .explain(Color::from_rgb8(255, 0, 255))
+            ;
+        let attack_bypass = ParamToggle::new(
+            &self.params.frequency_sidechain.smoother.attack_bypass
+        )
+            .associated_value(false)
+            .style(self.theme.radio_toggle(None))
+            .width(10.into())
+            .height(10.into())
+            .map(Message::ParamUpdate)
+            // .explain(Color::from_rgb8(255, 0, 0))
+            ;
+
+        let attack_header = Row::new()
+            .align_items(Alignment::Center)
+            .push(Space::with_width(10.into()))
+            .push(attack_label)
+            .push(attack_bypass);
+
+        let attack_knob = ParamKnob::new(
+            &mut self.smoother_attack_state,
+            &self.params.frequency_sidechain.smoother.attack_speed
+        )
+            .label("Speed")
+            .apply_theme(self.theme)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .map(Message::ParamUpdate)
+            // .explain(Color::from_rgb8(0, 255, 0))
+            ;
+
+        let decay_label = Element::<Message>::from(Text::new("Decay")
+            .apply_theme(self.theme)
+            .width(Length::Fill)
+            .horizontal_alignment(alignment::Horizontal::Center)
+            .vertical_alignment(alignment::Vertical::Center))
+            // .explain(Color::from_rgb8(255, 0, 255))
+            ;
+        let decay_bypass = ParamToggle::new(
+            &self.params.frequency_sidechain.smoother.decay_bypass
+        )
+            .associated_value(false)
+            .style(self.theme.radio_toggle(None))
+            .width(10.into())
+            .height(10.into())
+            .map(Message::ParamUpdate)
+            // .explain(Color::from_rgb8(0, 0, 255))
+            ;
+
+        let decay_header = Row::new()
+            .align_items(Alignment::Center)
+            .push(Space::with_width(10.into()))
+            .push(decay_label)
+            .push(decay_bypass);
+
+        let decay_knob = ParamKnob::new(
+            &mut self.smoother_decay_state,
+            &self.params.frequency_sidechain.smoother.decay_speed
+        )
+            .label("Speed")
+            .apply_theme(self.theme)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .map(Message::ParamUpdate)
+            // .explain(Color::from_rgb8(255, 255, 0))
+            ;
+
+        let smoother = Row::new()
+            .width(Length::Fill)
+            .max_height(90)
+            .align_items(Alignment::Center)
+            .push(smoother_label)
+            .push(Row::new()
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .spacing(8)
+                .push(Column::new()
+                    .width(Length::Fill)
                     .height(Length::Fill)
                     .spacing(4)
-                    .push(detail)
-                    .push(precision)
+                    .push(attack_header)
+                    .push(attack_knob)
+                )
+                .push(Rule::vertical(1).apply_theme(self.theme))
+                .push(Column::new()
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .spacing(4)
+                    .push(decay_header)
+                    .push(decay_knob)
+                )
+            );
+
+        let equalizer_label = vertical_label("EQUALIZER")
+            .padding(Padding::right(14));
+
+        let mut selected_band_index = 0;
+        let band_colors = vec![
+            Color::from_rgb8(255, 83, 0), // orange
+            Color::from_rgb8(255, 255, 0), // yellow
+            Color::from_rgb8(114, 255, 33), // green
+            Color::from_rgb8(0, 255, 255), // cyan
+            Color::from_rgb8(0, 155, 233), // blue
+            Color::from_rgb8(136, 33, 255), // purple
+            Color::from_rgb8(225, 20, 153), // magenta
+        ];
+
+        let band_label = Element::<Message>::from(Text::new(format!("Band {}", selected_band_index + 1))
+            .apply_theme(self.theme)
+            .width(Length::Fill)
+            .color(band_colors[selected_band_index])
+            .horizontal_alignment(alignment::Horizontal::Left)
+            .vertical_alignment(alignment::Vertical::Center))
+            // .explain(Color::from_rgb8(255, 0, 0))
+            ;
+        let band_bypass = ParamToggle::new(
+            &self.params.equalizer.bands[selected_band_index].bypass
+        )
+            .associated_value(false)
+            .style(self.theme.radio_toggle(Some(band_colors[selected_band_index])))
+            .width(10.into())
+            .height(10.into())
+            .map(Message::ParamUpdate)
+            // .explain(Color::from_rgb8(0, 255, 0))
+            ;
+
+        let band_header = Element::<Message>::from(Row::new()
+            .align_items(Alignment::Center)
+            .push(Space::with_width(32.into()))
+            .push(band_label)
+            .push(band_bypass))
+            // .explain(Color::from_rgb8(0, 0, 255))
+            ;
+
+        let band_gain = ParamSlider::new(
+            &mut self.band_gain_state,
+            &self.params.equalizer.bands[selected_band_index].gain
+        )
+            .label("Gain")
+            .style(self.theme.slider(0.5))
+            .width(26.into())
+            .height(Length::Fill)
+            .map(Message::ParamUpdate)
+            // .explain(Color::from_rgb8(255, 0, 255))
+            ;
+        let band_frequency = ParamKnob::new(
+            &mut self.band_frequency_state,
+            &self.params.equalizer.bands[selected_band_index].frequency
+        )
+            .label("Frequency")
+            .apply_theme(self.theme)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .map(Message::ParamUpdate)
+            // .explain(Color::from_rgb8(0, 255, 255))
+            ;
+        let band_q = ParamKnob::new(
+            &mut self.band_q_state,
+            &self.params.equalizer.bands[selected_band_index].q
+        )
+            .label("Q")
+            .anchor(Anchor::Center)
+            .apply_theme(self.theme)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .map(Message::ParamUpdate)
+            // .explain(Color::from_rgb8(255, 255, 0))
+            ;
+
+        let low_shelf_toggle = ParamToggle::new(
+            &self.params.equalizer.bands[selected_band_index].band_type,
+        )
+            .associated_value_exclusive(BandType::LowShelf)
+            .style(self.theme.band_shape_toggle(BandType::LowShelf, band_colors[selected_band_index]))
+            .width(Length::FillPortion(3))
+            .height(Length::Fill)
+            .map(Message::ParamUpdate);
+        let peak_toggle = ParamToggle::new(
+            &self.params.equalizer.bands[selected_band_index].band_type,
+        )
+            .associated_value_exclusive(BandType::Peak)
+            .style(self.theme.band_shape_toggle(BandType::Peak, band_colors[selected_band_index]))
+            .width(Length::FillPortion(2))
+            .height(Length::Fill)
+            .map(Message::ParamUpdate);
+        let high_shelf_toggle = ParamToggle::new(
+            &self.params.equalizer.bands[selected_band_index].band_type,
+        )
+            .associated_value_exclusive(BandType::HighShelf)
+            .style(self.theme.band_shape_toggle(BandType::HighShelf, band_colors[selected_band_index]))
+            .width(Length::FillPortion(3))
+            .height(Length::Fill)
+            .map(Message::ParamUpdate);
+
+        let high_pass_toggle = ParamToggle::new(
+            &self.params.equalizer.bands[selected_band_index].band_type,
+        )
+            .associated_value_exclusive(BandType::HighPass)
+            .style(self.theme.band_shape_toggle(BandType::HighPass, band_colors[selected_band_index]))
+            .width(Length::FillPortion(3))
+            .height(Length::Fill)
+            .map(Message::ParamUpdate);
+        let notch_toggle = ParamToggle::new(
+            &self.params.equalizer.bands[selected_band_index].band_type,
+        )
+            .associated_value_exclusive(BandType::Notch)
+            .style(self.theme.band_shape_toggle(BandType::Notch, band_colors[selected_band_index]))
+            .width(Length::FillPortion(2))
+            .height(Length::Fill)
+            .map(Message::ParamUpdate);
+        let low_pass_toggle = ParamToggle::new(
+            &self.params.equalizer.bands[selected_band_index].band_type,
+        )
+            .associated_value_exclusive(BandType::LowPass)
+            .style(self.theme.band_shape_toggle(BandType::LowPass, band_colors[selected_band_index]))
+            .width(Length::FillPortion(3))
+            .height(Length::Fill)
+            .map(Message::ParamUpdate);
+
+        let equalizer = Row::new()
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .align_items(Alignment::Center)
+            .push(equalizer_label)
+            .push(band_gain)
+            .push(Space::with_width(8.into()))
+            .push(Column::new()
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .push(band_header)
+                .push(Space::with_height(4.into()))
+                .push(Row::new()
+                    .width(Length::Fill)
+                    .height(Length::FillPortion(3))
+                    .spacing(8)
+                    .push(band_frequency)
+                    .push(band_q)
+                )
+                .push(Space::with_height(8.into()))
+                .push(Element::<Message>::from(Column::new()
+                    .width(Length::Fill)
+                    .height(Length::FillPortion(2))
+                    .padding(8)
+                    .spacing(12)
+                    .push(Row::new()
+                        .width(Length::Fill)
+                        .height(Length::FillPortion(1))
+                        .spacing(12)
+                        .push(low_shelf_toggle)
+                        .push(peak_toggle)
+                        .push(high_shelf_toggle)
+                    )
+                    .push(Row::new()
+                        .width(Length::Fill)
+                        .height(Length::FillPortion(1))
+                        .spacing(12)
+                        .push(high_pass_toggle)
+                        .push(notch_toggle)
+                        .push(low_pass_toggle)
+                    ))
+                    // .explain(Color::from_rgb8(255, 0, 255))
+                )
             );
 
         Column::new()
             .align_items(Alignment::Center)
             .width(Length::Shrink)
             .padding(8)
-            .spacing(12)
             .push(header)
+            .push(Space::with_height(12.into()))
             .push(Rule::horizontal(1).apply_theme(self.theme))
+            .push(Space::with_height(12.into()))
             .push(frequency_sidechain)
+            .push(Space::with_height(12.into()))
             .push(Rule::horizontal(1).apply_theme(self.theme))
+            .push(Space::with_height(8.into()))
+            .push(smoother)
+            .push(Space::with_height(12.into()))
+            .push(Rule::horizontal(1).apply_theme(self.theme))
+            .push(Space::with_height(8.into()))
+            .push(equalizer)
             .into()
     }
 

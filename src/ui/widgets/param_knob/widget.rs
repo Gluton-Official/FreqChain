@@ -358,8 +358,8 @@ impl<'a, P: Param> ParamKnob<'a, P> {
         self
     }
 
-    pub fn alignment(mut self, alignment: Anchor) -> Self {
-        self.anchor = alignment;
+    pub fn anchor(mut self, anchor: Anchor) -> Self {
+        self.anchor = anchor;
         self
     }
 
