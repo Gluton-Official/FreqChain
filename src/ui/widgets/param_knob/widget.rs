@@ -1,3 +1,5 @@
+//! A knob that integrates with NIH-plug's [`Param`] types.
+
 use nih_plug::prelude::Param;
 use nih_plug_iced::backend::Renderer;
 use nih_plug_iced::canvas;
