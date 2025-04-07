@@ -1,3 +1,4 @@
+use std::sync::mpsc::channel;
 use nih_plug::prelude::*;
 use nih_plug::util::window;
 use nih_plug::util::StftHelper;
@@ -7,6 +8,7 @@ use realfft::num_traits::Zero;
 
 use crate::modules::smoother::Smoother;
 use crate::modules::smoother::SmootherParams;
+use crate::util::buffer_utils::BufferUtils;
 use crate::util::fft;
 use crate::util::fft::ForwardFFT;
 use crate::util::fft::InverseFFT;
@@ -94,6 +96,12 @@ impl FrequencySidechain {
 
                     detail_smoothing(params.detail.value(), &mut self.sidechain_complex_buffer[channel_index], sample_rate);
                     precision_scaling(params.precision.value(), &mut self.sidechain_complex_buffer[channel_index]);
+                    
+                    self.sidechain_complex_buffer.on_each_by_channel(channel_index, |bin_index, sidechain_sample| {
+                        let (mut magnitude, phase) = sidechain_sample.to_polar();
+                        self.smoother[channel_index][bin_index].process(&mut magnitude, sample_rate, &params.smoother);
+                        *sidechain_sample = Complex::from_polar(magnitude, phase);
+                    });
                 } else {
                     // Apply the Hann windowing function
                     window::multiply_with_window(real_buffer, &self.window_function);
@@ -102,19 +110,14 @@ impl FrequencySidechain {
                     self.forward_fft.process(real_buffer, &mut self.main_complex_buffer);
 
                     // Iterates frequency bins of the main buffer and sidechain buffer
-                    for (bin_index, (main_bin, sidechain_bin)) in self
+                    for (main_bin, sidechain_bin) in self
                         .main_complex_buffer
                         .iter_mut()
                         // Use the relevant channel of our already processed sidechain buffer
                         .zip(&self.sidechain_complex_buffer[channel_index])
-                        .enumerate()
                     {
                         let (frequency_magnitude, phase) = main_bin.to_polar();
-                        let mut sidechain_frequency_magnitude = sidechain_bin.norm();
-
-                        // TODO: move to where detail and precision are
-                        self.smoother[channel_index][bin_index]
-                            .process(&mut sidechain_frequency_magnitude, sample_rate, &params.smoother);
+                        let sidechain_frequency_magnitude = sidechain_bin.norm();
     
                         let result_magnitude = clamp_min(
                             frequency_magnitude - (sidechain_frequency_magnitude * self.overlap_times as f32),
@@ -277,7 +280,7 @@ mod tests {
         let mut main_buffer = create_empty_buffer(1024);
         let mut sidechain_buffer = create_empty_buffer(1024);
         fs.process(&mut main_buffer, &mut sidechain_buffer, SAMPLE_RATE, &FrequencySidechainParams::default());
-        main_buffer.on_each_sample(|channel, sample_index, sample| {
+        main_buffer.on_each(|channel, sample_index, sample| {
             assert_eq!(*sample, 0.0, "Channel {} | Sample {}", channel, sample_index);
         });
     }
@@ -293,7 +296,7 @@ mod tests {
             ((frequency / SAMPLE_RATE) * sample_index as f32).sin()
         });
         fs.process(&mut main_buffer, &mut sidechain_buffer, SAMPLE_RATE, &FrequencySidechainParams::default());
-        main_buffer.on_each_sample(|channel, sample_index, sample| {
+        main_buffer.on_each(|channel, sample_index, sample| {
             assert_eq!(*sample, 0.0, "Channel {} | Sample {}", channel, sample_index);
         });
     }
@@ -310,7 +313,7 @@ mod tests {
             ((frequency_2 / SAMPLE_RATE) * sample_index as f32).sin()
         });
         fs.process(&mut main_buffer, &mut sidechain_buffer, SAMPLE_RATE, &FrequencySidechainParams::default());
-        main_buffer.on_each_sample(|channel, sample_index, sample| {
+        main_buffer.on_each(|channel, sample_index, sample| {
             assert_eq!(*sample, 0.0, "Channel {} | Sample {}", channel, sample_index);
             // assert_eq!(*sample, ((frequency_1 / SAMPLE_RATE) * sample_index as f32).sin(), "Channel {} | Sample {}", channel, sample_index);
         });

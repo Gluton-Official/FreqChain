@@ -136,7 +136,7 @@ impl Plugin for FreqChain {
             }
         }
 
-        sidechain_buffer.on_each_sample(|_, _, sidechain_sample| {
+        sidechain_buffer.on_each(|_, _, sidechain_sample| {
             *sidechain_sample *= self.params.sidechain_input.gain.smoothed.next();
         });
 
