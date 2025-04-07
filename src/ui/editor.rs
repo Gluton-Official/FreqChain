@@ -7,7 +7,7 @@ use crate::ui::widgets::param_knob::{Anchor, ParamKnob};
 use crate::ui::{ColorUtils, PaddingExt};
 use crate::FreqChain;
 use nih_plug::prelude::*;
-use nih_plug_iced::{assets, Padding, Space, Vector};
+use nih_plug_iced::{assets, Container, Padding, Space, Vector};
 use nih_plug_iced::create_iced_editor;
 use nih_plug_iced::executor;
 use nih_plug_iced::widgets::ParamMessage;
@@ -25,13 +25,11 @@ use nih_plug_iced::Text;
 use nih_plug_iced::WindowQueue;
 use nih_plug_iced::alignment;
 use std::sync::Arc;
-use nih_plug_iced::backend::Renderer;
-use nih_plug_iced::canvas::Path;
 use crate::modules::equalizer::BandType;
 use crate::ui::widgets::param_slider::ParamSlider;
 use crate::ui::widgets::param_toggle::ParamToggle;
 
-const EDITOR_WIDTH: u32 = 192;
+const EDITOR_WIDTH: u32 = 1000;
 const EDITOR_HEIGHT: u32 = 572;
 const FPS: f32 = 60.0;
 
@@ -518,23 +516,47 @@ impl IcedEditor for FreqChainEditor {
                 )
             );
 
-        Column::new()
-            .align_items(Alignment::Center)
-            .width(Length::Shrink)
-            .padding(8)
-            .push(header)
-            .push(Space::with_height(12.into()))
-            .push(Rule::horizontal(1).apply_theme(self.theme))
-            .push(Space::with_height(12.into()))
-            .push(frequency_sidechain)
-            .push(Space::with_height(12.into()))
-            .push(Rule::horizontal(1).apply_theme(self.theme))
-            .push(Space::with_height(8.into()))
-            .push(smoother)
-            .push(Space::with_height(12.into()))
-            .push(Rule::horizontal(1).apply_theme(self.theme))
-            .push(Space::with_height(8.into()))
-            .push(equalizer)
+        Row::new()
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .push(Column::new()
+                .align_items(Alignment::Center)
+                .width(192.into())
+                .padding(8)
+                .push(header)
+                .push(Space::with_height(12.into()))
+                .push(Rule::horizontal(1).apply_theme(self.theme))
+                .push(Space::with_height(12.into()))
+                .push(frequency_sidechain)
+                .push(Space::with_height(12.into()))
+                .push(Rule::horizontal(1).apply_theme(self.theme))
+                .push(Space::with_height(8.into()))
+                .push(smoother)
+                .push(Space::with_height(12.into()))
+                .push(Rule::horizontal(1).apply_theme(self.theme))
+                .push(Space::with_height(8.into()))
+                .push(equalizer)
+            )
+            .push(Column::new()
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(Padding { top: 4, right: 4, bottom: 4, left: 0 })
+                .spacing(4)
+                .push(Container::new(Text::new("Placeholder"))
+                    .apply_theme(self.theme)
+                    .width(Length::Fill)
+                    .height(80.into())
+                    .align_x(alignment::Horizontal::Center)
+                    .align_y(alignment::Vertical::Center)
+                )
+                .push(Container::new(Text::new("Placeholder"))
+                    .apply_theme(self.theme)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .align_x(alignment::Horizontal::Center)
+                    .align_y(alignment::Vertical::Center)
+                )
+            )
             .into()
     }
 

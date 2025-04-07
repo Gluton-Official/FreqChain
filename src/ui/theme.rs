@@ -1,7 +1,7 @@
 use std::ops::Sub;
 use nih_plug::prelude::FloatRange;
 use nih_plug::util;
-use nih_plug_iced::{assets, rule, text_input, Background, Button, Color, Font, Point, Rectangle, Size, Vector};
+use nih_plug_iced::{assets, container, rule, text_input, Background, Button, Color, Font, Point, Rectangle, Size, Vector};
 use nih_plug_iced::canvas::{Fill, FillRule, Path, Stroke};
 use crate::modules::equalizer::BandType;
 use crate::ui::ColorUtils;
@@ -29,6 +29,18 @@ impl FreqChainTheme {
             
             font: assets::NOTO_SANS_LIGHT,
             text_size: 12,
+        }
+    }
+}
+
+impl container::StyleSheet for Theme {
+    fn style(&self) -> container::Style {
+        container::Style {
+            text_color: Some(self.foreground),
+            background: Some(self.background.into()),
+            border_radius: 0.0,
+            border_width: 1.0,
+            border_color: self.foreground.with_alpha(0.5),
         }
     }
 }

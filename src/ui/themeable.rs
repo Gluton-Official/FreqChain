@@ -1,4 +1,4 @@
-use nih_plug_iced::{Rule, Text};
+use nih_plug_iced::{Container, Rule, Text};
 use nih_plug::params::Param;
 use crate::ui::theme::Theme;
 use crate::ui::widgets::param_knob::ParamKnob;
@@ -15,6 +15,12 @@ impl Themeable for Text {
             .font(theme.font)
             .size(theme.text_size)
             .color(theme.foreground)
+    }
+}
+
+impl<Message> Themeable for Container<'_, Message> {
+    fn apply_theme(self, theme: Theme) -> Self {
+        self.style(theme)
     }
 }
 
