@@ -54,9 +54,6 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize, const HOP_SIZE: usize, con
         let overlap_times = WINDOW_SIZE / HOP_SIZE;
         let window_function = window::hann(WINDOW_SIZE);
 
-        nih_log!("hann window sum: {}", window_function.iter().sum::<f32>());
-        nih_log!("gain compensation factor: {}", HOP_SIZE as f32 / window_function.iter().sum::<f32>());
-
         Self {
             stft: StftHelper::new(CHANNELS, WINDOW_SIZE, 0),
 
