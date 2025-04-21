@@ -14,7 +14,7 @@ pub const BUFFER_SIZE: usize = LENGTH / 2 + 1;
 // TODO: join into one struct
 pub trait FFT<T: FftNum> {
     fn new(planner: &mut RealFftPlanner<T>, length: usize) -> Self;
-    fn get_length(&self) -> usize;
+    fn length(&self) -> usize;
     fn create_real_buffer(&self) -> Vec<T>;
     fn create_complex_buffer(&self) -> Vec<Complex<T>>;
 }
@@ -49,7 +49,7 @@ impl<T: FftNum> FFT<T> for ForwardFFT<T> {
         }
     }
 
-    fn get_length(&self) -> usize {
+    fn length(&self) -> usize {
         self.length
     }
 
@@ -70,7 +70,7 @@ impl<T: FftNum> FFT<T> for InverseFFT<T> {
         }
     }
 
-    fn get_length(&self) -> usize {
+    fn length(&self) -> usize {
         self.length
     }
 

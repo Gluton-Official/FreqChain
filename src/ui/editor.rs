@@ -2,12 +2,12 @@ use crate::freqchain::FreqChainParams;
 use crate::ui::theme::FreqChainTheme;
 use crate::ui::theme::Theme;
 use crate::ui::themeable::Themeable;
-use crate::ui::widgets::{param_knob, param_slider};
+use crate::ui::widgets::{param_knob, param_slider, spectrum};
 use crate::ui::widgets::param_knob::{Anchor, ParamKnob};
 use crate::ui::{ColorUtils, PaddingExt};
 use crate::FreqChain;
 use nih_plug::prelude::*;
-use nih_plug_iced::{assets, Container, Padding, Space, Vector};
+use nih_plug_iced::{assets, overlay, Container, Padding, Space, Vector, Widget};
 use nih_plug_iced::create_iced_editor;
 use nih_plug_iced::executor;
 use nih_plug_iced::widgets::ParamMessage;
@@ -25,9 +25,13 @@ use nih_plug_iced::Text;
 use nih_plug_iced::WindowQueue;
 use nih_plug_iced::alignment;
 use std::sync::Arc;
+use atomic_refcell::{AtomicRefCell, AtomicRefMut};
+use realfft::num_complex::Complex32;
 use crate::modules::equalizer::BandType;
+use crate::ui::widgets::group::Group;
 use crate::ui::widgets::param_slider::ParamSlider;
 use crate::ui::widgets::param_toggle::ParamToggle;
+use crate::ui::widgets::spectrum::Spectrum;
 
 const EDITOR_WIDTH: u32 = 1000;
 const EDITOR_HEIGHT: u32 = 572;
@@ -37,15 +41,21 @@ pub(crate) fn default_state() -> Arc<IcedState> {
     IcedState::from_size(EDITOR_WIDTH, EDITOR_HEIGHT)
 }
 
-pub(crate) fn create(
+pub(crate) fn create<const CHANNELS: usize, const WINDOW_SIZE: usize>(
     params: Arc<FreqChainParams>,
     sample_rate: Arc<AtomicF32>,
+    input_buffer_out: Arc<AtomicRefCell<triple_buffer::Output<[[Complex32; WINDOW_SIZE]; CHANNELS]>>>,
+    sidechain_buffer_out: Arc<AtomicRefCell<triple_buffer::Output<[[Complex32; WINDOW_SIZE]; CHANNELS]>>>,
+    output_buffer_out: Arc<AtomicRefCell<triple_buffer::Output<[[Complex32; WINDOW_SIZE]; CHANNELS]>>>,
     editor_state: Arc<IcedState>,
 ) -> Option<Box<dyn Editor>> {
-    create_iced_editor::<FreqChainEditor>(editor_state, (params, sample_rate))
+    create_iced_editor::<FreqChainEditor<CHANNELS, WINDOW_SIZE>>(
+        editor_state, 
+        (params, sample_rate, input_buffer_out, sidechain_buffer_out, output_buffer_out)
+    )
 }
 
-pub struct FreqChainEditor {
+pub struct FreqChainEditor<const CHANNELS: usize, const WINDOW_SIZE: usize> {
     params: Arc<FreqChainParams>,
     sample_rate: Arc<AtomicF32>,
 
@@ -63,6 +73,10 @@ pub struct FreqChainEditor {
     band_gain_state: param_slider::State,
     band_frequency_state: param_knob::State,
     band_q_state: param_knob::State,
+    
+    input_spectrum_state: spectrum::State<CHANNELS, WINDOW_SIZE>,
+    sidechain_spectrum_state: spectrum::State<CHANNELS, WINDOW_SIZE>,
+    output_spectrum_state: spectrum::State<CHANNELS, WINDOW_SIZE>,
 }
 
 /// Messages to be sent to the editor UI
@@ -71,16 +85,19 @@ pub enum Message {
     ParamUpdate(ParamMessage),
 }
 
-impl IcedEditor for FreqChainEditor {
+impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEditor<CHANNELS, WINDOW_SIZE> {
     type Executor = executor::Default;
     type Message = Message;
     type InitializationFlags = (
         Arc<FreqChainParams>,
         Arc<AtomicF32>, // sample rate
+        Arc<AtomicRefCell<triple_buffer::Output<[[Complex32; WINDOW_SIZE]; CHANNELS]>>>, // input buffer out
+        Arc<AtomicRefCell<triple_buffer::Output<[[Complex32; WINDOW_SIZE]; CHANNELS]>>>, // sidechain buffer out
+        Arc<AtomicRefCell<triple_buffer::Output<[[Complex32; WINDOW_SIZE]; CHANNELS]>>>, // output buffer out
     );
 
     fn new(
-        (params, sample_rate): Self::InitializationFlags,
+        (params, sample_rate, input_buffer_out, sidechain_buffer_out, output_buffer_out): Self::InitializationFlags,
         context: Arc<dyn GuiContext>,
     ) -> (Self, Command<Self::Message>) {
         let editor = FreqChainEditor {
@@ -101,6 +118,10 @@ impl IcedEditor for FreqChainEditor {
             band_gain_state: param_slider::State::default(),
             band_frequency_state: param_knob::State::default(),
             band_q_state: param_knob::State::default(),
+            
+            input_spectrum_state: spectrum::State::<CHANNELS, WINDOW_SIZE>::new(input_buffer_out),
+            sidechain_spectrum_state: spectrum::State::<CHANNELS, WINDOW_SIZE>::new(sidechain_buffer_out),
+            output_spectrum_state: spectrum::State::<CHANNELS, WINDOW_SIZE>::new(output_buffer_out),
         };
 
         (editor, Command::none())
@@ -515,6 +536,26 @@ impl IcedEditor for FreqChainEditor {
                     // .explain(Color::from_rgb8(255, 0, 255))
                 )
             );
+        
+        let input_spectrum = Spectrum::new(
+            &mut self.input_spectrum_state,
+        )
+            .style(self.theme.spectrum(Color::from_rgb8(126, 126, 126), spectrum::Alignment::Bottom))
+            .width(Length::Fill)
+            .height(Length::Fill);
+        let output_spectrum = Spectrum::new(
+            &mut self.output_spectrum_state,
+        )
+            .style(self.theme.spectrum(Color::from_rgb8(58, 173, 255), spectrum::Alignment::Bottom))
+            .width(Length::Fill)
+            .height(Length::Fill);
+        
+        let sidechain_spectrum = Spectrum::new(
+            &mut self.sidechain_spectrum_state
+        )
+            .style(self.theme.spectrum(Color::from_rgb8(255, 50, 50), spectrum::Alignment::Top))
+            .width(Length::Fill)
+            .height(Length::FillPortion(1));
 
         Row::new()
             .width(Length::Fill)
@@ -542,19 +583,34 @@ impl IcedEditor for FreqChainEditor {
                 .height(Length::Fill)
                 .padding(Padding { top: 4, right: 4, bottom: 4, left: 0 })
                 .spacing(4)
-                .push(Container::new(Text::new("Placeholder"))
+                .push(Container::new(
+                    Group::new()
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                        .push(input_spectrum)
+                        .push(output_spectrum)
+                )
                     .apply_theme(self.theme)
                     .width(Length::Fill)
                     .height(80.into())
                     .align_x(alignment::Horizontal::Center)
                     .align_y(alignment::Vertical::Center)
+                    .padding(1)
                 )
-                .push(Container::new(Text::new("Placeholder"))
+                .push(Container::new(
+                    Column::new()
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                        .push(Space::with_height(Length::FillPortion(1)))
+                        .push(sidechain_spectrum)
+                )
                     .apply_theme(self.theme)
                     .width(Length::Fill)
-                    .height(Length::Fill)
+                    .height(480.into())
+                    .max_height(480)
                     .align_x(alignment::Horizontal::Center)
                     .align_y(alignment::Vertical::Center)
+                    .padding(1)
                 )
             )
             .into()

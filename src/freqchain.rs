@@ -1,16 +1,18 @@
+
 use std::num::NonZeroU32;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
-
+use atomic_refcell::AtomicRefCell;
 use nih_plug::prelude::*;
 use nih_plug_iced::IcedState;
-
+use realfft::num_complex::Complex32;
+use triple_buffer::triple_buffer;
 use crate::modules::equalizer::Equalizer;
 use crate::modules::equalizer::EqualizerParams;
 use crate::modules::frequency_sidechain::FrequencySidechain;
 use crate::modules::frequency_sidechain::FrequencySidechainParams;
 use crate::ui::editor;
-use crate::ui::theme::FreqChainTheme;
+
 use crate::util::buffer_utils::BufferUtils;
 
 const CHANNELS: usize = 2;
@@ -20,6 +22,8 @@ const EQ_BAND_COUNT: usize = 7;
 const FFT_WINDOW_SIZE: usize = 1024;
 const FFT_HOP_SIZE: usize = 128;
 
+const SPECTRUM_SIZE: usize = FFT_WINDOW_SIZE / 2 + 1;
+
 pub struct FreqChain {
     params: Arc<FreqChainParams>,
 
@@ -27,7 +31,11 @@ pub struct FreqChain {
 
     equalizer: Equalizer<EQ_BAND_COUNT, CHANNELS>,
 
-    frequency_sidechain: FrequencySidechain,
+    frequency_sidechain: FrequencySidechain<CHANNELS, FFT_WINDOW_SIZE, FFT_HOP_SIZE, SPECTRUM_SIZE>,
+    
+    input_buffer_out: Option<Arc<triple_buffer::Output<Vec<Vec<Complex32>>>>>,
+    sidechain_buffer_out: Option<Arc<triple_buffer::Output<Vec<Vec<Complex32>>>>>,
+    output_buffer_out: Option<Arc<triple_buffer::Output<Vec<Vec<Complex32>>>>>,
 }
 
 /// The [`Params`] derive macro provides the plugin wrapper (e.g. within a DAW) the plugin's
@@ -92,9 +100,21 @@ impl Plugin for FreqChain {
     }
 
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
+        const COMPLEX_BUFFER_LEN: usize = FFT_WINDOW_SIZE / 2 + 1;
+        let (input_buffer_in, input_buffer_out) = triple_buffer(&[[Complex32::default(); COMPLEX_BUFFER_LEN]; CHANNELS]);
+        let (sidechain_buffer_in, sidechain_buffer_out) = triple_buffer(&[[Complex32::default(); COMPLEX_BUFFER_LEN]; CHANNELS]);
+        let (output_buffer_in, output_buffer_out) = triple_buffer(&[[Complex32::default(); COMPLEX_BUFFER_LEN]; CHANNELS]);
+        
+        self.frequency_sidechain.set_input_buffer_in(Some(input_buffer_in));
+        self.frequency_sidechain.set_sidechain_buffer_in(Some(sidechain_buffer_in));
+        self.frequency_sidechain.set_output_buffer_in(Some(output_buffer_in));
+        
         editor::create(
             self.params.clone(),
             self.sample_rate.clone(),
+            Arc::new(AtomicRefCell::new(input_buffer_out)),
+            Arc::new(AtomicRefCell::new(sidechain_buffer_out)),
+            Arc::new(AtomicRefCell::new(output_buffer_out)),
             self.params.editor_state.clone(),
         )
     }
@@ -171,7 +191,11 @@ impl Default for FreqChain {
 
             equalizer: Equalizer::<EQ_BAND_COUNT, CHANNELS>::default(),
 
-            frequency_sidechain: FrequencySidechain::new(CHANNELS, FFT_WINDOW_SIZE, FFT_HOP_SIZE),
+            frequency_sidechain: FrequencySidechain::<CHANNELS, FFT_WINDOW_SIZE, FFT_HOP_SIZE, SPECTRUM_SIZE>::default(),
+            
+            input_buffer_out: None,
+            sidechain_buffer_out: None,
+            output_buffer_out: None,
         }
     }
 }

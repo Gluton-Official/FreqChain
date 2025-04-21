@@ -4,6 +4,7 @@ use crate::ui::theme::Theme;
 use crate::ui::widgets::param_knob::ParamKnob;
 use crate::ui::widgets::param_slider::ParamSlider;
 use crate::ui::widgets::param_toggle::ParamToggle;
+use crate::ui::widgets::spectrum::Spectrum;
 
 pub trait Themeable {
     fn apply_theme(self, theme: Theme) -> Self;
@@ -46,6 +47,12 @@ impl<P: Param> Themeable for ParamToggle<'_, P>
 where
     P::Plain: Copy
 {
+    fn apply_theme(self, theme: Theme) -> Self {
+        self.style(theme)
+    }
+}
+
+impl<const CHANNELS: usize, const BINS: usize> Themeable for Spectrum<'_, CHANNELS, BINS> {
     fn apply_theme(self, theme: Theme) -> Self {
         self.style(theme)
     }

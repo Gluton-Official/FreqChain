@@ -38,10 +38,10 @@ impl BufferUtils<f32> for Buffer<'_> {
     }
 }
 
-impl BufferUtils<Complex32> for Vec<Vec<Complex32>> {
+impl<T> BufferUtils<T> for Vec<Vec<T>> {
     fn on_each<F>(&mut self, mut f: F)
     where
-        F: FnMut(usize, usize, &mut Complex32)
+        F: FnMut(usize, usize, &mut T)
     {
         for (channel_index, channel_buffer) in self.iter_mut().enumerate() {
             for (bin_index, bin) in channel_buffer.iter_mut().enumerate() {
@@ -52,7 +52,7 @@ impl BufferUtils<Complex32> for Vec<Vec<Complex32>> {
     
     fn on_each_by_channel<F>(&mut self, channel: usize, mut f: F)
     where
-        F: FnMut(usize, &mut Complex32)
+        F: FnMut(usize, &mut T)
     {
         for (bin_index, bin) in self[channel].iter_mut().enumerate() {
             f(bin_index, bin);

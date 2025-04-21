@@ -1,13 +1,13 @@
-use std::ops::Sub;
 use nih_plug::prelude::FloatRange;
 use nih_plug::util;
-use nih_plug_iced::{assets, container, rule, text_input, Background, Button, Color, Font, Point, Rectangle, Size, Vector};
+use nih_plug_iced::{assets, container, rule, text_input, Background, Color, Font, Point, Vector};
 use nih_plug_iced::canvas::{Fill, FillRule, Path, Stroke};
 use crate::modules::equalizer::BandType;
 use crate::ui::ColorUtils;
-use crate::ui::widgets::{param_knob, param_slider, param_toggle};
+use crate::ui::widgets::{param_knob, param_slider, param_toggle, spectrum};
 use crate::ui::widgets::param_knob::{KnobStyle, PointerStyle};
 use crate::ui::widgets::param_toggle::ButtonStyle;
+use crate::ui::widgets::spectrum::{Shape, WaveStyle};
 use crate::ui::widgets::value_input::TextInputStyle;
 
 #[derive(Clone, Copy)]
@@ -516,6 +516,51 @@ impl Theme {
             theme: self,
             shape,
             color,
+        }
+    }
+}
+
+impl spectrum::StyleSheet for Theme {
+    fn style(&self) -> spectrum::Style {
+        spectrum::Style {
+            font: self.font,
+            text_size: self.text_size,
+            text_color: self.foreground,
+            
+            shape: Shape::Wave(WaveStyle {
+                stroke: Some(Stroke::default().with_color(self.foreground)),
+                fill: Some(self.foreground.with_alpha(0.5).into()),
+            }),
+            
+            ..spectrum::Style::default()
+        }
+    }
+}
+
+impl Theme {
+    pub fn spectrum<'a>(self, color: Color, alignment: spectrum::Alignment) -> impl Into<Box<dyn spectrum::StyleSheet + 'a>> {
+        struct Spectrum {
+            theme: Theme,
+            color: Color,
+            alignment: spectrum::Alignment,
+        }
+        impl spectrum::StyleSheet for Spectrum {
+            fn style(&self) -> spectrum::Style {
+                spectrum::Style {
+                    shape: Shape::Wave(WaveStyle {
+                        stroke: Some(Stroke::default().with_color(self.color)),
+                        fill: Some(self.color.lerp_to(self.theme.background, 0.5).into()),
+                    }),
+                    alignment: self.alignment,
+
+                    ..<Theme as spectrum::StyleSheet>::style(&self.theme)
+                }
+            }
+        }
+        Spectrum {
+            theme: self,
+            color,
+            alignment,
         }
     }
 }
