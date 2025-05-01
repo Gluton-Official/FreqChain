@@ -1,19 +1,27 @@
-use nih_plug::prelude::FloatRange;
-use nih_plug::util;
-use nih_plug_iced::{assets, container, rule, text_input, Background, Color, Font, Point, Vector};
-use nih_plug_iced::canvas::{Fill, FillRule, Path, Stroke};
 use crate::modules::equalizer::BandType;
-use crate::ui::ColorUtils;
-use crate::ui::widgets::{param_knob, param_slider, param_toggle, spectrum};
 use crate::ui::widgets::param_knob::{KnobStyle, PointerStyle};
 use crate::ui::widgets::param_toggle::ButtonStyle;
 use crate::ui::widgets::spectrum::{Shape, WaveStyle};
 use crate::ui::widgets::value_input::TextInputStyle;
+use crate::ui::widgets::{equalizer, param_knob, param_slider, param_toggle, spectrum};
+use crate::ui::ColorUtils;
+use nih_plug::prelude::FloatRange;
+use nih_plug::util;
+use nih_plug_iced::canvas::{Fill, FillRule, Path, Stroke};
+use nih_plug_iced::{assets, container, rule, text_input, Background, Color, Font, Point, Vector};
 
 #[derive(Clone, Copy)]
 pub struct Theme {
     pub foreground: Color,
     pub background: Color,
+    
+    pub orange: Color,
+    pub yellow: Color,
+    pub green: Color,
+    pub cyan: Color,
+    pub blue: Color,
+    pub purple: Color,
+    pub magenta: Color,
 
     pub font: Font,
     pub text_size: u16,
@@ -26,6 +34,14 @@ impl FreqChainTheme {
         Theme {
             foreground: Color::from_rgb8(0xE4, 0xE4, 0xE4),
             background: Color::from_rgb8(0x14, 0x14, 0x14),
+            
+            orange: Color::from_rgb8(255, 83, 0),
+            yellow: Color::from_rgb8(255, 255, 0),
+            green: Color::from_rgb8(114, 255, 33),
+            cyan: Color::from_rgb8(0, 255, 255),
+            blue: Color::from_rgb8(0, 155, 233),
+            purple: Color::from_rgb8(136, 33, 255),
+            magenta: Color::from_rgb8(225, 20, 153),
             
             font: assets::NOTO_SANS_LIGHT,
             text_size: 12,
@@ -561,6 +577,25 @@ impl Theme {
             theme: self,
             color,
             alignment,
+        }
+    }
+}
+
+impl equalizer::StyleSheet for Theme {
+    fn style(&self) -> equalizer::Style {
+        equalizer::Style {
+            font: self.font,
+            text_size: self.text_size,
+            text_color: self.foreground,
+            
+            line: Stroke::default().with_color(self.foreground),
+            fill: self.foreground.with_alpha(0.01).into(),
+            
+            band_line: Stroke::default(),
+            band_fill: Color::default().with_alpha(0.01).into(),
+            band_colors: vec![self.orange, self.yellow, self.green, self.cyan, self.blue, self.purple, self.magenta],
+            
+            node_style: Default::default(),
         }
     }
 }

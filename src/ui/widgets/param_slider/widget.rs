@@ -1,19 +1,15 @@
 //! A slider that integrates with NIH-plug's [`Param`] types.
 
+use crate::ui::widgets::drag::{DragState, DragTrait};
+use crate::ui::widgets::param_slider::{Orientation, Placement, StyleSheet};
 use atomic_refcell::AtomicRefCell;
 use nih_plug::prelude::Param;
-use std::borrow::Borrow;
-
-use nih_plug_iced::backend::widget;
-use nih_plug_iced::backend::Renderer;
-use nih_plug_iced::renderer::Renderer as GraphicsRenderer;
-use nih_plug_iced::text::Renderer as TextRenderer;
-use nih_plug_iced::{alignment, canvas, event, keyboard, layout, mouse, renderer, text, touch, Background, Clipboard, Color, Element, Event, Font, Layout, Length, Point, Rectangle, Shell, Size, TextInput, Vector, Widget};
 use nih_plug_iced::alignment::{Horizontal, Vertical};
+use nih_plug_iced::backend::Renderer;
 use nih_plug_iced::canvas::{Path, Text};
+use nih_plug_iced::text::Renderer as TextRenderer;
 use nih_plug_iced::widgets::ParamMessage;
-use crate::ui::widgets::input::DragState;
-use crate::ui::widgets::param_slider::{Orientation, Placement, StyleSheet};
+use nih_plug_iced::{canvas, event, keyboard, layout, mouse, renderer, touch, Clipboard, Element, Event, Font, Layout, Length, Point, Rectangle, Shell, Size, Widget};
 
 /// A slider that integrates with NIH-plug's [`Param`] types.
 pub struct ParamSlider<'a, P: Param> {
@@ -79,8 +75,8 @@ impl<'a, P: Param> Widget<ParamMessage, Renderer> for ParamSlider<'a, P> {
         event: Event,
         layout: Layout<'_>,
         cursor_position: Point,
-        renderer: &Renderer,
-        clipboard: &mut dyn Clipboard,
+        _renderer: &Renderer,
+        _clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, ParamMessage>,
     ) -> event::Status {
         // TODO: fix keyboard input

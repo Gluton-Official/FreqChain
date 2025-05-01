@@ -1,37 +1,24 @@
 use crate::freqchain::FreqChainParams;
+use crate::modules::equalizer::BandType;
 use crate::ui::theme::FreqChainTheme;
 use crate::ui::theme::Theme;
 use crate::ui::themeable::Themeable;
-use crate::ui::widgets::{param_knob, param_slider, spectrum};
-use crate::ui::widgets::param_knob::{Anchor, ParamKnob};
-use crate::ui::{ColorUtils, PaddingExt};
-use crate::FreqChain;
-use nih_plug::prelude::*;
-use nih_plug_iced::{assets, overlay, Container, Padding, Space, Vector, Widget};
-use nih_plug_iced::create_iced_editor;
-use nih_plug_iced::executor;
-use nih_plug_iced::widgets::ParamMessage;
-use nih_plug_iced::Alignment;
-use nih_plug_iced::Color;
-use nih_plug_iced::Column;
-use nih_plug_iced::Command;
-use nih_plug_iced::Element;
-use nih_plug_iced::IcedEditor;
-use nih_plug_iced::IcedState;
-use nih_plug_iced::Length;
-use nih_plug_iced::Row;
-use nih_plug_iced::Rule;
-use nih_plug_iced::Text;
-use nih_plug_iced::WindowQueue;
-use nih_plug_iced::alignment;
-use std::sync::Arc;
-use atomic_refcell::{AtomicRefCell, AtomicRefMut};
-use realfft::num_complex::Complex32;
-use crate::modules::equalizer::BandType;
+use crate::ui::widgets::equalizer::Equalizer;
 use crate::ui::widgets::group::Group;
+use crate::ui::widgets::param_knob::{Anchor, ParamKnob};
 use crate::ui::widgets::param_slider::ParamSlider;
 use crate::ui::widgets::param_toggle::ParamToggle;
 use crate::ui::widgets::spectrum::Spectrum;
+use crate::ui::widgets::{equalizer, param_knob, param_slider, spectrum};
+use crate::ui::{ColorUtils, PaddingExt};
+use crate::FreqChain;
+use atomic_refcell::AtomicRefCell;
+use nih_plug::prelude::*;
+use nih_plug_iced::widgets::ParamMessage;
+use nih_plug_iced::{alignment, assets, create_iced_editor, executor, Alignment, Color, Column, Command, Container, Element, IcedEditor, IcedState, Length, Padding, Row, Rule, Space, Text, Widget, WindowQueue};
+use realfft::num_complex::Complex32;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
 
 const EDITOR_WIDTH: u32 = 1000;
 const EDITOR_HEIGHT: u32 = 572;
@@ -77,6 +64,8 @@ pub struct FreqChainEditor<const CHANNELS: usize, const WINDOW_SIZE: usize> {
     input_spectrum_state: spectrum::State<CHANNELS, WINDOW_SIZE>,
     sidechain_spectrum_state: spectrum::State<CHANNELS, WINDOW_SIZE>,
     output_spectrum_state: spectrum::State<CHANNELS, WINDOW_SIZE>,
+
+    equalizer_state: equalizer::State,
 }
 
 /// Messages to be sent to the editor UI
@@ -122,6 +111,8 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
             input_spectrum_state: spectrum::State::<CHANNELS, WINDOW_SIZE>::new(input_buffer_out),
             sidechain_spectrum_state: spectrum::State::<CHANNELS, WINDOW_SIZE>::new(sidechain_buffer_out),
             output_spectrum_state: spectrum::State::<CHANNELS, WINDOW_SIZE>::new(output_buffer_out),
+
+            equalizer_state: equalizer::State::default(),
         };
 
         (editor, Command::none())
@@ -369,30 +360,24 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
         let equalizer_label = vertical_label("EQUALIZER")
             .padding(Padding::right(14));
 
-        let mut selected_band_index = 0;
-        let band_colors = vec![
-            Color::from_rgb8(255, 83, 0), // orange
-            Color::from_rgb8(255, 255, 0), // yellow
-            Color::from_rgb8(114, 255, 33), // green
-            Color::from_rgb8(0, 255, 255), // cyan
-            Color::from_rgb8(0, 155, 233), // blue
-            Color::from_rgb8(136, 33, 255), // purple
-            Color::from_rgb8(225, 20, 153), // magenta
-        ];
+        let band_colors = <Theme as equalizer::StyleSheet>::style(&self.theme).band_colors;
+        let active_node_index = self.equalizer_state.active_node_index();
+        let active_band = &self.params.equalizer.bands[active_node_index];
+        let active_band_color = band_colors[active_node_index];
 
-        let band_label = Element::<Message>::from(Text::new(format!("Band {}", selected_band_index + 1))
+        let band_label = Element::<Message>::from(Text::new(format!("Band {}", active_node_index + 1))
             .apply_theme(self.theme)
             .width(Length::Fill)
-            .color(band_colors[selected_band_index])
+            .color(band_colors[active_node_index])
             .horizontal_alignment(alignment::Horizontal::Left)
             .vertical_alignment(alignment::Vertical::Center))
             // .explain(Color::from_rgb8(255, 0, 0))
             ;
         let band_bypass = ParamToggle::new(
-            &self.params.equalizer.bands[selected_band_index].bypass
+            &active_band.bypass
         )
             .associated_value(false)
-            .style(self.theme.radio_toggle(Some(band_colors[selected_band_index])))
+            .style(self.theme.radio_toggle(Some(band_colors[active_node_index])))
             .width(10.into())
             .height(10.into())
             .map(Message::ParamUpdate)
@@ -409,7 +394,7 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
 
         let band_gain = ParamSlider::new(
             &mut self.band_gain_state,
-            &self.params.equalizer.bands[selected_band_index].gain
+            &active_band.gain
         )
             .label("Gain")
             .style(self.theme.slider(0.5))
@@ -420,7 +405,7 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
             ;
         let band_frequency = ParamKnob::new(
             &mut self.band_frequency_state,
-            &self.params.equalizer.bands[selected_band_index].frequency
+            &active_band.frequency
         )
             .label("Frequency")
             .apply_theme(self.theme)
@@ -431,7 +416,7 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
             ;
         let band_q = ParamKnob::new(
             &mut self.band_q_state,
-            &self.params.equalizer.bands[selected_band_index].q
+            &active_band.q
         )
             .label("Q")
             .anchor(Anchor::Center)
@@ -443,56 +428,56 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
             ;
 
         let low_shelf_toggle = ParamToggle::new(
-            &self.params.equalizer.bands[selected_band_index].band_type,
+            &active_band.band_type,
         )
             .associated_value_exclusive(BandType::LowShelf)
-            .style(self.theme.band_shape_toggle(BandType::LowShelf, band_colors[selected_band_index]))
+            .style(self.theme.band_shape_toggle(BandType::LowShelf, active_band_color))
             .width(Length::FillPortion(3))
             .height(Length::Fill)
             .map(Message::ParamUpdate);
         let peak_toggle = ParamToggle::new(
-            &self.params.equalizer.bands[selected_band_index].band_type,
+            &active_band.band_type,
         )
             .associated_value_exclusive(BandType::Peak)
-            .style(self.theme.band_shape_toggle(BandType::Peak, band_colors[selected_band_index]))
+            .style(self.theme.band_shape_toggle(BandType::Peak, active_band_color))
             .width(Length::FillPortion(2))
             .height(Length::Fill)
             .map(Message::ParamUpdate);
         let high_shelf_toggle = ParamToggle::new(
-            &self.params.equalizer.bands[selected_band_index].band_type,
+            &active_band.band_type,
         )
             .associated_value_exclusive(BandType::HighShelf)
-            .style(self.theme.band_shape_toggle(BandType::HighShelf, band_colors[selected_band_index]))
+            .style(self.theme.band_shape_toggle(BandType::HighShelf, active_band_color))
             .width(Length::FillPortion(3))
             .height(Length::Fill)
             .map(Message::ParamUpdate);
 
         let high_pass_toggle = ParamToggle::new(
-            &self.params.equalizer.bands[selected_band_index].band_type,
+            &active_band.band_type,
         )
             .associated_value_exclusive(BandType::HighPass)
-            .style(self.theme.band_shape_toggle(BandType::HighPass, band_colors[selected_band_index]))
+            .style(self.theme.band_shape_toggle(BandType::HighPass, active_band_color))
             .width(Length::FillPortion(3))
             .height(Length::Fill)
             .map(Message::ParamUpdate);
         let notch_toggle = ParamToggle::new(
-            &self.params.equalizer.bands[selected_band_index].band_type,
+            &active_band.band_type,
         )
             .associated_value_exclusive(BandType::Notch)
-            .style(self.theme.band_shape_toggle(BandType::Notch, band_colors[selected_band_index]))
+            .style(self.theme.band_shape_toggle(BandType::Notch, active_band_color))
             .width(Length::FillPortion(2))
             .height(Length::Fill)
             .map(Message::ParamUpdate);
         let low_pass_toggle = ParamToggle::new(
-            &self.params.equalizer.bands[selected_band_index].band_type,
+            &active_band.band_type,
         )
             .associated_value_exclusive(BandType::LowPass)
-            .style(self.theme.band_shape_toggle(BandType::LowPass, band_colors[selected_band_index]))
+            .style(self.theme.band_shape_toggle(BandType::LowPass, active_band_color))
             .width(Length::FillPortion(3))
             .height(Length::Fill)
             .map(Message::ParamUpdate);
 
-        let equalizer = Row::new()
+        let equalizer_group = Row::new()
             .width(Length::Fill)
             .height(Length::Fill)
             .align_items(Alignment::Center)
@@ -553,9 +538,19 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
         let sidechain_spectrum = Spectrum::new(
             &mut self.sidechain_spectrum_state
         )
-            .style(self.theme.spectrum(Color::from_rgb8(255, 50, 50), spectrum::Alignment::Top))
+            .style(self.theme.spectrum(Color::from_rgb8(255, 50, 50), spectrum::Alignment::Bottom))
             .width(Length::Fill)
-            .height(Length::FillPortion(1));
+            .height(Length::Fill);
+
+        let equalizer = Equalizer::new(
+            &mut self.equalizer_state,
+            &self.params.equalizer,
+            self.sample_rate.load(Ordering::Relaxed),
+        )
+            .apply_theme(self.theme)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .map(Message::ParamUpdate);
 
         Row::new()
             .width(Length::Fill)
@@ -576,7 +571,7 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
                 .push(Space::with_height(12.into()))
                 .push(Rule::horizontal(1).apply_theme(self.theme))
                 .push(Space::with_height(8.into()))
-                .push(equalizer)
+                .push(equalizer_group)
             )
             .push(Column::new()
                 .width(Length::Fill)
@@ -598,11 +593,11 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
                     .padding(1)
                 )
                 .push(Container::new(
-                    Column::new()
+                    Group::new()
                         .width(Length::Fill)
                         .height(Length::Fill)
-                        .push(Space::with_height(Length::FillPortion(1)))
                         .push(sidechain_spectrum)
+                        .push(equalizer)
                 )
                     .apply_theme(self.theme)
                     .width(Length::Fill)

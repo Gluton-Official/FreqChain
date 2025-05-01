@@ -1,17 +1,19 @@
 //! An audio spectrum.
 
-use std::ops::Range;
-use std::sync::Arc;
+use crate::ui::editor::Message;
+use crate::ui::widgets::spectrum::{Alignment, BarStyle, Shape, StyleSheet};
+use crate::util::remap::{normalize_log10, normalize_ranged};
 use atomic_refcell::AtomicRefCell;
 use nih_plug::util::{gain_to_db, MINUS_INFINITY_DB};
 use nih_plug_iced::backend::Renderer;
-use nih_plug_iced::{canvas, event, layout, mouse, touch, Clipboard, Element, Event, Layout, Length, Point, Rectangle, Shell, Size, Widget};
-use nih_plug_iced::canvas::{Path, Stroke};
+use nih_plug_iced::canvas::Path;
 use nih_plug_iced::layout::Limits;
 use nih_plug_iced::renderer::Style as RendererStyle;
+use nih_plug_iced::widgets::util::remap_rect_x_t;
+use nih_plug_iced::{canvas, layout, Element, Layout, Length, Point, Rectangle, Size, Widget};
 use realfft::num_complex::Complex32;
-use crate::ui::editor::Message;
-use crate::ui::widgets::spectrum::{Alignment, BarStyle, Shape, StyleSheet};
+use std::ops::Range;
+use std::sync::Arc;
 
 /// An audio spectrum.
 pub struct Spectrum<'a, const CHANNELS: usize, const BINS: usize> {
@@ -21,6 +23,7 @@ pub struct Spectrum<'a, const CHANNELS: usize, const BINS: usize> {
     height: Length,
 
     db_range: Range<f32>,
+    frequency_range: Range<f32>,
 
     style_sheet: Box<dyn StyleSheet + 'a>,
 }
@@ -75,8 +78,6 @@ impl<'a, Message, const CHANNELS: usize, const BINS: usize> Widget<Message, Rend
         let bins = spectrum_buffer[0].len();
         let channels = spectrum_buffer.len();
 
-        let max_scaled_bin_index = (bins as f32 + 2.0).log10();
-
         let mut frame = canvas::Frame::new(viewport.size());
         match style.shape {
             Shape::Bar(BarStyle::Line(line_style)) => {
@@ -95,12 +96,12 @@ impl<'a, Message, const CHANNELS: usize, const BINS: usize> Widget<Message, Rend
                         }
                         magnitude /= channels as f32;
 
-                        let bin_x = bounds.x + (bin_index as f32 + 2.0).log10() / max_scaled_bin_index * bounds.width;
+                        let bin_x = remap_rect_x_t(&bounds, normalize_log10(bin_index as f32 + 2.0, 2.0, bins as f32 + 2.0));
                         let bin_width = bin_x - prev_bin_x;
-                        let line_x = prev_bin_x + bin_width / 2.0;
+                        let line_x = prev_bin_x + bin_width / 2.0; // center line
                         prev_bin_x = bin_x;
 
-                        let scaled_magnitude = (gain_to_db(magnitude) - self.db_range.start) / (self.db_range.end - self.db_range.start); // scale to min/max dB window
+                        let scaled_magnitude = normalize_ranged(gain_to_db(magnitude), &self.db_range); // scale to min/max dB window
                         let line_end_y = y_alignment - scaled_magnitude * centering_multiplier; // center 0dB
 
                         path.move_to([line_x, y_alignment].into());
@@ -125,18 +126,18 @@ impl<'a, Message, const CHANNELS: usize, const BINS: usize> Widget<Message, Rend
                             }
                             magnitude /= channels as f32;
 
-                            let bin_x = bounds.x + (bin_index as f32 + 2.0).log10() / max_scaled_bin_index * bounds.width;
+                            let bin_x = remap_rect_x_t(&bounds, normalize_log10(bin_index as f32 + 2.0, 2.0, bins as f32 + 2.0));
                             let bin_width = bin_x - prev_bin_x;
-                            let x_pos = prev_bin_x + bin_width / 2.0;
+                            let x_pos = prev_bin_x + bin_width / 2.0; // center point
                             prev_bin_x = bin_x;
 
-                            let scaled_magnitude = (gain_to_db(magnitude) - self.db_range.start) / (self.db_range.end - self.db_range.start); // scale to min/max dB window
+                            let scaled_magnitude = normalize_ranged(gain_to_db(magnitude), &self.db_range); // scale to min/max dB window
                             let y_pos = y_alignment - scaled_magnitude * centering_multiplier; // center 0dB
 
                             Point::new(x_pos, y_pos)
                         }).collect::<Vec<_>>();
                         
-                        let scaled_magnitude = (MINUS_INFINITY_DB - self.db_range.start) / (self.db_range.end - self.db_range.start); // scale to min/max dB window
+                        let scaled_magnitude = normalize_ranged(MINUS_INFINITY_DB, &self.db_range); // scale to min/max dB window
                         let y_pos = y_alignment - scaled_magnitude * centering_multiplier; // center 0dB
                         points.insert(0, [bounds.x, y_pos].into());
                         points.push([bounds.x + bounds.width, y_pos].into());
@@ -185,6 +186,7 @@ impl<'a, const CHANNELS: usize, const BINS: usize> Spectrum<'a, CHANNELS, BINS> 
             height: Length::Units(30),
 
             db_range: -18.0..18.0,
+            frequency_range: 20.0..20000.0,
 
             style_sheet: Default::default(),
         }

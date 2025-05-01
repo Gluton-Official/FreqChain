@@ -1,36 +1,20 @@
 //! A knob that integrates with NIH-plug's [`Param`] types.
 
+use crate::ui::widgets::drag::{DragState, DragTrait};
+use crate::ui::widgets::param_knob::style::StyleSheet;
+use crate::ui::widgets::param_knob::Placement;
+use atomic_refcell::AtomicRefCell;
 use nih_plug::prelude::Param;
+use nih_plug_iced::alignment::{Horizontal, Vertical};
 use nih_plug_iced::backend::Renderer;
-use nih_plug_iced::canvas;
 use nih_plug_iced::canvas::path::Arc;
 use nih_plug_iced::canvas::{Path, Text};
-use nih_plug_iced::event;
-use nih_plug_iced::keyboard;
-use nih_plug_iced::layout;
 use nih_plug_iced::layout::Limits;
-use nih_plug_iced::mouse;
 use nih_plug_iced::renderer::Style as RendererStyle;
 use nih_plug_iced::text::Renderer as TextRenderer;
-use nih_plug_iced::touch;
 use nih_plug_iced::widgets::ParamMessage;
-use nih_plug_iced::Clipboard;
-use nih_plug_iced::Element;
-use nih_plug_iced::Event;
-use nih_plug_iced::Font;
-use nih_plug_iced::Layout;
-use nih_plug_iced::Length;
-use nih_plug_iced::Point;
-use nih_plug_iced::Rectangle;
-use nih_plug_iced::Shell;
-use nih_plug_iced::Size;
-use nih_plug_iced::Widget;
+use nih_plug_iced::{canvas, event, keyboard, layout, mouse, touch, Clipboard, Element, Event, Font, Layout, Length, Point, Rectangle, Shell, Size, Widget};
 use std::f32::consts::FRAC_PI_2;
-use atomic_refcell::AtomicRefCell;
-use nih_plug_iced::alignment::{Horizontal, Vertical};
-use crate::ui::widgets::input::DragState;
-use crate::ui::widgets::param_knob::Placement;
-use crate::ui::widgets::param_knob::style::StyleSheet;
 
 /// A knob that integrates with NIH-plug's [`Param`] types.
 pub struct ParamKnob<'a, P: Param> {

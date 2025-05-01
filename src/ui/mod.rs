@@ -1,4 +1,4 @@
-use nih_plug_iced::{Color, Padding};
+use nih_plug_iced::{Color, Padding, Rectangle, Size, Vector};
 
 pub mod editor;
 pub mod widgets;
@@ -62,5 +62,17 @@ impl PaddingExt for Padding {
         let mut padding = Padding::ZERO;
         padding.left = value;
         padding
+    }
+}
+
+trait RectangleExt {
+    fn inflate(&self, amount: Vector<f32>) -> Self;
+}
+
+impl RectangleExt for Rectangle<f32> {
+    fn inflate(&self, amount: Vector<f32>) -> Self {
+        let inflated_size: Size = (Vector::from(self.size()) + amount).into();
+        let adjusted_position = self.center() - Vector::from(inflated_size) * 0.5;
+        Rectangle::new(adjusted_position, inflated_size)
     }
 }

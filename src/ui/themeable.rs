@@ -1,10 +1,11 @@
-use nih_plug_iced::{Container, Rule, Text};
-use nih_plug::params::Param;
 use crate::ui::theme::Theme;
+use crate::ui::widgets::equalizer::Equalizer;
 use crate::ui::widgets::param_knob::ParamKnob;
 use crate::ui::widgets::param_slider::ParamSlider;
 use crate::ui::widgets::param_toggle::ParamToggle;
 use crate::ui::widgets::spectrum::Spectrum;
+use nih_plug::params::Param;
+use nih_plug_iced::{Container, Rule, Text};
 
 pub trait Themeable {
     fn apply_theme(self, theme: Theme) -> Self;
@@ -53,6 +54,12 @@ where
 }
 
 impl<const CHANNELS: usize, const BINS: usize> Themeable for Spectrum<'_, CHANNELS, BINS> {
+    fn apply_theme(self, theme: Theme) -> Self {
+        self.style(theme)
+    }
+}
+
+impl<const BANDS: usize> Themeable for Equalizer<'_, BANDS> {
     fn apply_theme(self, theme: Theme) -> Self {
         self.style(theme)
     }
