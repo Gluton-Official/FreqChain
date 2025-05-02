@@ -1,4 +1,5 @@
 use crate::util::biquad_filter::BiquadFilter;
+use crate::util::buffer_utils::BufferUtils;
 use crate::util::remap::normalize;
 use nih_plug::prelude::*;
 use std::f32::consts::TAU;
@@ -80,28 +81,28 @@ impl<const BANDS: usize, const CHANNELS: usize> Equalizer<BANDS, CHANNELS> {
             return;
         }
 
-        // TODO: probably want to apply all band filters before moving to the next sample
+        // update coefficients if dirty (i.e. the parameters were changed)
         for (band_params, band_filter) in params.bands.iter().zip(self.biquad_filters.iter_mut()) {
-            if band_params.bypass.value() {
-                continue;
-            }
-            
-            // skip processing for peak and shelf filters when gain is 0db
-            if matches!(
-                band_params.band_type.value(),
-                BandType::Peak | BandType::HighShelf | BandType::LowShelf
-            ) && band_params.gain.value() == 0_f32 {
-                continue;
-            }
-
-            // update coefficients if dirty (i.e. the parameters were changed)
             if band_params.dirty.load(Ordering::SeqCst) {
                 *band_filter = band_params.calculate_filter(self.sample_rate.unwrap());
                 band_params.dirty.store(false, Ordering::SeqCst);
             }
+        }
 
-            for channel_samples in buffer.iter_samples() {
-                for (channel_index, sample) in channel_samples.into_iter().enumerate() {
+        for channel_samples in buffer.iter_samples() {
+            for (channel_index, sample) in channel_samples.into_iter().enumerate() {
+                for (band_params, band_filter) in params.bands.iter().zip(self.biquad_filters.iter_mut()) {
+                    if band_params.bypass.value() {
+                        continue;
+                    }
+                    // skip processing for peak and shelf filters when gain is 0db
+                    if matches!(
+                        band_params.band_type.value(),
+                        BandType::Peak | BandType::HighShelf | BandType::LowShelf
+                    ) && band_params.gain.value() == 0_f32 {
+                        continue;
+                    }
+
                     let result = band_filter.biquad_transform(
                         *sample,
                         self.x1[channel_index],
