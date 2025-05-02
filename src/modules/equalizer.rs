@@ -1,10 +1,10 @@
-use std::f32::consts::{LN_2, TAU};
+use crate::util::biquad_filter::BiquadFilter;
+use crate::util::remap::normalize;
+use nih_plug::prelude::*;
+use std::f32::consts::TAU;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
-
-use nih_plug::prelude::*;
-use crate::util::biquad_filter::BiquadFilter;
 
 pub struct Equalizer<const BANDS: usize, const CHANNELS: usize> {
     sample_rate: Option<f32>,
@@ -18,6 +18,8 @@ pub struct Equalizer<const BANDS: usize, const CHANNELS: usize> {
 
 #[derive(Params)]
 pub struct EqualizerParams<const BANDS: usize> {
+    #[id = "enabled"]
+    pub enabled: BoolParam,
     #[nested(array, group = "Band")]
     pub bands: [BandParams; BANDS],
 }
@@ -38,7 +40,7 @@ pub struct BandParams {
     dirty: Arc<AtomicBool>,
 }
 
-#[derive(Enum, Debug, PartialEq)]
+#[derive(Enum, Debug, Copy, Clone, PartialEq)]
 pub enum BandType {
     #[id = "peak"]
     Peak,
@@ -74,7 +76,7 @@ impl<const BANDS: usize, const CHANNELS: usize> Default for Equalizer<BANDS, CHA
 
 impl<const BANDS: usize, const CHANNELS: usize> Equalizer<BANDS, CHANNELS> {
     pub fn process(&mut self, buffer: &mut Buffer, params: &EqualizerParams<BANDS>) {
-        if self.sample_rate.is_none() {
+        if !params.enabled.value() || self.sample_rate.is_none() {
             return;
         }
 
@@ -149,9 +151,15 @@ impl BandParams {
             q: FloatParam::new(
                 format!("{band_name} Q"),
                 q,
-                FloatRange::Skewed { min: 0.1, max: 18.0, factor: FloatRange::skew_factor(-2.0) }
+                {
+                    let min = 0.1;
+                    let max = 18.0;
+                    let center = 1.0;
+                    let factor = 0.5_f32.log(normalize(center, min, max)); // make 1 the center
+                    FloatRange::Skewed { min, max, factor }
+                }
             )
-                .with_step_size(0.01)
+                .with_value_to_string(formatters::v2s_f32_rounded(2))
                 .with_callback(Arc::new({
                     let dirty = dirty.clone();
                     move |_| dirty.store(true, Ordering::SeqCst)
@@ -163,7 +171,7 @@ impl BandParams {
             )
                 .with_unit("dB")
                 .with_value_to_string(formatters::v2s_f32_rounded(1))
-                .with_string_to_value(Arc::new(move |string| string.trim_end_matches("dB").parse().ok()))
+                .with_string_to_value(Arc::new(move |string| string.trim_end_matches("dB").trim_end().parse().ok()))
                 .with_callback(Arc::new({
                     let dirty = dirty.clone();
                     move |_| dirty.store(true, Ordering::SeqCst)
@@ -176,7 +184,7 @@ impl BandParams {
     }
 
     #[allow(non_snake_case)]
-    fn calculate_filter(&self, sample_rate: f32) -> BiquadFilter {
+    pub(crate) fn calculate_filter(&self, sample_rate: f32) -> BiquadFilter {
         // angular frequency
         let w0 = TAU * self.frequency.value() / sample_rate;
         let sin_w0 = w0.sin();
@@ -275,6 +283,7 @@ impl BandParams {
 impl Default for EqualizerParams<7> {
     fn default() -> Self {
         Self {
+            enabled: BoolParam::new("EQ Enabled", true),
             bands: [
                 BandParams::new(1, BandType::LowShelf, 63.0, 1.0, 0.0),
                 BandParams::new(2, BandType::Peak, 136.0, 1.0, 0.0),
