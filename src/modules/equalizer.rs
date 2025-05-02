@@ -18,6 +18,8 @@ pub struct Equalizer<const BANDS: usize, const CHANNELS: usize> {
 
 #[derive(Params)]
 pub struct EqualizerParams<const BANDS: usize> {
+    #[id = "enabled"]
+    pub enabled: BoolParam,
     #[nested(array, group = "Band")]
     pub bands: [BandParams; BANDS],
 }
@@ -74,7 +76,7 @@ impl<const BANDS: usize, const CHANNELS: usize> Default for Equalizer<BANDS, CHA
 
 impl<const BANDS: usize, const CHANNELS: usize> Equalizer<BANDS, CHANNELS> {
     pub fn process(&mut self, buffer: &mut Buffer, params: &EqualizerParams<BANDS>) {
-        if self.sample_rate.is_none() {
+        if !params.enabled.value() || self.sample_rate.is_none() {
             return;
         }
 
@@ -281,6 +283,7 @@ impl BandParams {
 impl Default for EqualizerParams<7> {
     fn default() -> Self {
         Self {
+            enabled: BoolParam::new("EQ Enabled", true),
             bands: [
                 BandParams::new(1, BandType::LowShelf, 63.0, 1.0, 0.0),
                 BandParams::new(2, BandType::Peak, 136.0, 1.0, 0.0),

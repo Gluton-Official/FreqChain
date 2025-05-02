@@ -1,3 +1,4 @@
+use std::f32::consts::{FRAC_PI_2, FRAC_PI_8};
 use crate::modules::equalizer::BandType;
 use crate::ui::widgets::param_knob::{KnobStyle, PointerStyle};
 use crate::ui::widgets::param_toggle::ButtonStyle;
@@ -9,6 +10,7 @@ use nih_plug::prelude::FloatRange;
 use nih_plug::util;
 use nih_plug_iced::canvas::{Fill, FillRule, Path, Stroke};
 use nih_plug_iced::{assets, container, rule, text_input, Background, Color, Font, Point, Vector};
+use nih_plug_iced::canvas::path::Arc;
 
 #[derive(Clone, Copy)]
 pub struct Theme {
@@ -394,7 +396,7 @@ impl Theme {
                     ..<Theme as param_toggle::StyleSheet>::style(&self.theme)
                 }
             }
-            
+
             fn active(&self) -> param_toggle::Style {
                 param_toggle::Style {
                     button: Some(ButtonStyle {
@@ -406,7 +408,7 @@ impl Theme {
                                 path.circle(center, radius / 3.0);
                             })
                         },
-                        
+
                         ..self.style().button.unwrap_or(<Theme as param_toggle::StyleSheet>::active(&self.theme).button.unwrap_or_default())
                     }),
 
@@ -421,12 +423,12 @@ impl Theme {
     }
 
     pub fn band_shape_toggle<'a>(self, shape: BandType, color: Color) -> impl Into<Box<dyn param_toggle::StyleSheet + 'a>> {
-        struct RadioToggle {
+        struct BandShapeToggle {
             theme: Theme,
             shape: BandType,
             color: Color,
         }
-        impl param_toggle::StyleSheet for RadioToggle {
+        impl param_toggle::StyleSheet for BandShapeToggle {
             fn style(&self) -> param_toggle::Style {
                 param_toggle::Style {
                     label_placement: None,
@@ -520,7 +522,7 @@ impl Theme {
                 param_toggle::Style {
                     button: Some(ButtonStyle {
                         stroke: Stroke::default().with_color(self.color),
-                        
+
                         ..self.style().button.unwrap_or(<Theme as param_toggle::StyleSheet>::active(&self.theme).button.unwrap_or_default())
                     }),
 
@@ -528,10 +530,125 @@ impl Theme {
                 }
             }
         }
-        RadioToggle {
+        BandShapeToggle {
             theme: self,
             shape,
             color,
+        }
+    }
+
+    pub fn power_button<'a>(self) -> impl Into<Box<dyn param_toggle::StyleSheet + 'a>> {
+        struct PowerButton {
+            theme: Theme,
+        }
+        impl param_toggle::StyleSheet for PowerButton {
+            fn style(&self) -> param_toggle::Style {
+                param_toggle::Style {
+                    label_placement: None,
+                    button: Some(ButtonStyle {
+                        draw_path: |_value, center, scale| {
+                            let scale = f32::min(scale.x, scale.y);
+                            let radius = scale * 0.4;
+                            Path::new(|path| {
+                                path.arc(Arc {
+                                    center: center + Vector::new(0.0, scale / 2.0 - radius),
+                                    radius,
+                                    start_angle: -FRAC_PI_2 + FRAC_PI_8,
+                                    end_angle: 3.0 * FRAC_PI_2 - FRAC_PI_8,
+                                });
+                                path.move_to(center - Vector::new(0.0, scale / 2.0));
+                                path.line_to(center);
+                            })
+                        },
+                        stroke: Stroke::default().with_color(self.theme.foreground.lerp_to_inverse(0.5)),
+                        fill: None,
+                    }),
+
+                    ..<Theme as param_toggle::StyleSheet>::style(&self.theme)
+                }
+            }
+
+            fn active(&self) -> param_toggle::Style {
+                param_toggle::Style {
+                    button: Some(ButtonStyle {
+                        stroke: Stroke::default().with_color(self.theme.foreground),
+
+                        ..self.style().button.unwrap_or(<Theme as param_toggle::StyleSheet>::active(&self.theme).button.unwrap_or_default())
+                    }),
+
+                    ..self.style()
+                }
+            }
+        }
+        PowerButton {
+            theme: self,
+        }
+    }
+
+    pub fn headphones_button<'a>(self) -> impl Into<Box<dyn param_toggle::StyleSheet + 'a>> {
+        struct HeadphonesButton {
+            theme: Theme,
+        }
+        impl param_toggle::StyleSheet for HeadphonesButton {
+            fn style(&self) -> param_toggle::Style {
+                param_toggle::Style {
+                    label_placement: None,
+                    button: Some(ButtonStyle {
+                        draw_path: |_value, center, scale| {
+                            let scale = f32::min(scale.x, scale.y);
+                            Path::new(|path| {
+                                let left_ear_bottom = center + Vector::new(-scale * 0.4, scale * 0.5);
+                                let right_ear_bottom = center + Vector::new(scale * 0.4, scale * 0.5);
+                                let left_ear_top = left_ear_bottom - Vector::new(0.0, scale * 0.4);
+                                let right_ear_top = right_ear_bottom - Vector::new(0.0, scale * 0.4);
+                                let left_ear_control = left_ear_bottom - Vector::new(scale * 0.15, scale * 0.2);
+                                let right_ear_control = right_ear_top + Vector::new(scale * 0.15, scale * 0.2);
+                                let headband_left = left_ear_bottom - Vector::new(0.0, scale * 0.5);
+                                let headband_right = right_ear_bottom - Vector::new(0.0, scale * 0.5);
+                                let headband_left_control = left_ear_bottom - Vector::new(0.0, scale);
+                                let headband_right_control = right_ear_bottom - Vector::new(0.0, scale);
+                                path.move_to(left_ear_top);
+                                path.quadratic_curve_to(left_ear_control, left_ear_bottom);
+                                path.line_to(headband_left);
+                                path.bezier_curve_to(
+                                    headband_left_control,
+                                    headband_right_control,
+                                    headband_right,
+                                );
+                                path.line_to(right_ear_bottom);
+                                path.quadratic_curve_to(right_ear_control, right_ear_top);
+                                path.line_to(headband_right);
+                                path.bezier_curve_to(
+                                    headband_right_control,
+                                    headband_left_control,
+                                    headband_left,
+                                );
+                                path.line_to(left_ear_top);
+                            })
+                        },
+                        stroke: Stroke::default().with_color(self.theme.foreground.lerp_to_inverse(0.5)),
+                        fill: Some(self.theme.foreground.lerp_to_inverse(0.5).into()),
+                    }),
+
+                    ..<Theme as param_toggle::StyleSheet>::style(&self.theme)
+                }
+            }
+
+            fn active(&self) -> param_toggle::Style {
+                param_toggle::Style {
+                    button: Some(ButtonStyle {
+                        stroke: Stroke::default().with_color(self.theme.foreground),
+                        fill: Some(self.theme.foreground.into()),
+
+                        ..self.style().button.unwrap_or(<Theme as param_toggle::StyleSheet>::active(&self.theme).button.unwrap_or_default())
+                    }),
+
+                    ..self.style()
+                }
+            }
+        }
+        HeadphonesButton {
+            theme: self,
         }
     }
 }

@@ -551,6 +551,21 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
             .width(Length::Fill)
             .height(Length::Fill)
             .map(Message::ParamUpdate);
+        
+        let eq_enabled = ParamToggle::new(
+            &self.params.equalizer.enabled
+        )
+            .style(self.theme.power_button())
+            .width(12.into())
+            .height(12.into())
+            .map(Message::ParamUpdate);
+        let sidechain_solo = ParamToggle::new(
+            &self.params.sidechain_input.solo
+        )
+            .style(self.theme.headphones_button())
+            .width(12.into())
+            .height(12.into())
+            .map(Message::ParamUpdate);
 
         Row::new()
             .width(Length::Fill)
@@ -598,13 +613,15 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
                         .height(Length::Fill)
                         .push(sidechain_spectrum)
                         .push(equalizer)
+                        .push(Row::with_children(vec![eq_enabled, sidechain_solo])
+                            .padding(6)
+                            .spacing(6)
+                        )
                 )
                     .apply_theme(self.theme)
                     .width(Length::Fill)
                     .height(480.into())
                     .max_height(480)
-                    .align_x(alignment::Horizontal::Center)
-                    .align_y(alignment::Vertical::Center)
                     .padding(1)
                 )
             )
