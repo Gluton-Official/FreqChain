@@ -240,6 +240,14 @@ impl Theme {
                     ..<Theme as param_slider::StyleSheet>::style(&self.theme)
                 }
             }
+
+            fn hovered(&self) -> param_slider::Style {
+                param_slider::Style {
+                    major_tick_marks: self.style().major_tick_marks,
+                    
+                    ..<Theme as param_slider::StyleSheet>::hovered(&self.theme)
+                }
+            }
         }
         Slider {
             theme: self,
