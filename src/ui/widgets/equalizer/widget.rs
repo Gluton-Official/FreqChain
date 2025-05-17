@@ -505,7 +505,7 @@ impl<'a, const BANDS: usize> Equalizer<'a, BANDS> {
                         drag_state.stop_granular(cursor_position);
                     }
 
-                    let normalized_vector = drag_state.value(cursor_position);
+                    let normalized_vector = drag_state.value(*bounds, cursor_position);
                     self.set_normalized_value(shell, &band_params.frequency, normalized_vector.x);
                     self.set_normalized_value(shell, &band_params.gain, normalized_vector.y);
 

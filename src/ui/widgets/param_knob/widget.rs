@@ -504,13 +504,11 @@ impl<'a, P: Param> ParamKnob<'a, P> {
                 if let Some(drag_state) = drag_state.as_mut() {
                     if self.state.keyboard_modifiers.shift() {
                         drag_state.start_granular(cursor_position.y);
-
-                        self.set_normalized_value(shell, drag_state.value(cursor_position.y));
                     } else {
                         drag_state.stop_granular(cursor_position.y);
-
-                        self.set_normalized_value(shell, drag_state.value(cursor_position.y));
                     }
+
+                    self.set_normalized_value(shell, drag_state.value(bounds.y..(bounds.y + bounds.height), cursor_position.y));
 
                     return Some(event::Status::Captured);
                 }

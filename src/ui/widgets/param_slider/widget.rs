@@ -514,7 +514,8 @@ impl<'a, P: Param> ParamSlider<'a, P> {
                         shell.publish(ParamMessage::BeginSetParameter(self.param.as_ptr()));
 
                         let mut drag_state = self.state.drag_state.borrow_mut();
-                        *drag_state = Some(DragState::new_and_start_granular(oriented_cursor_position, self.param.modulated_normalized_value()));
+                        *drag_state = Some(DragState::new_and_start_granular(oriented_cursor_position, self.param.modulated_normalized_value()))
+                        
                     } else {
                         // drag
                         shell.publish(ParamMessage::BeginSetParameter(self.param.as_ptr()));
@@ -542,19 +543,17 @@ impl<'a, P: Param> ParamSlider<'a, P> {
             | Event::Touch(touch::Event::FingerMoved { .. }) => {
                 let mut drag_state = self.state.drag_state.borrow_mut();
                 if let Some(drag_state) = drag_state.as_mut() {
-                    let oriented_cursor_position = match self.style_sheet.style().orientation {
-                        Orientation::Vertical => cursor_position.y,
-                        Orientation::Horizontal => cursor_position.x
+                    let (oriented_cursor_position, slider_bounds) = match self.style_sheet.style().orientation {
+                        Orientation::Vertical => (cursor_position.y, bounds.y..(bounds.y + bounds.height)),
+                        Orientation::Horizontal => (cursor_position.x, bounds.x..(bounds.x + bounds.width))
                     };
                     if self.state.keyboard_modifiers.shift() {
                         drag_state.start_granular(oriented_cursor_position);
-
-                        self.set_normalized_value(shell, drag_state.value(oriented_cursor_position));
                     } else {
                         drag_state.stop_granular(oriented_cursor_position);
-
-                        self.set_normalized_value(shell, drag_state.value(oriented_cursor_position));
                     }
+
+                    self.set_normalized_value(shell, drag_state.value(slider_bounds, oriented_cursor_position));
 
                     return Some(event::Status::Captured);
                 }
