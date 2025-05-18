@@ -15,6 +15,10 @@ use nih_plug_iced::text::Renderer as TextRenderer;
 use nih_plug_iced::widgets::ParamMessage;
 use nih_plug_iced::{canvas, event, keyboard, layout, mouse, touch, Clipboard, Element, Event, Font, Layout, Length, Point, Rectangle, Shell, Size, Widget};
 use std::f32::consts::FRAC_PI_2;
+use nih_plug_iced::mouse::ScrollDelta;
+
+const SCROLL_SENSITIVITY: f32 = 0.05;
+const GRANULAR_SCROLL_MULTIPLIER: f32 = 0.25;
 
 /// A knob that integrates with NIH-plug's [`Param`] types.
 pub struct ParamKnob<'a, P: Param> {
@@ -511,6 +515,22 @@ impl<'a, P: Param> ParamKnob<'a, P> {
                     self.set_normalized_value(shell, drag_state.value(bounds.y..(bounds.y + bounds.height), cursor_position.y));
 
                     return Some(event::Status::Captured);
+                }
+            }
+            Event::Mouse(mouse::Event::WheelScrolled { delta }) => {
+                if bounds.contains(cursor_position) {
+                    let scroll_delta = match delta {
+                        ScrollDelta::Lines { y, .. } | ScrollDelta::Pixels { y, .. } => y,
+                    };
+                    let mut scroll_sensitivity = SCROLL_SENSITIVITY;
+                    if self.state.keyboard_modifiers.shift() {
+                        scroll_sensitivity *= GRANULAR_SCROLL_MULTIPLIER;
+                    }
+                    let normalized_scroll_distance = scroll_delta * scroll_sensitivity;
+
+                    shell.publish(ParamMessage::BeginSetParameter(self.param.as_ptr()));
+                    self.set_normalized_value(shell, self.param.modulated_normalized_value() + normalized_scroll_distance);
+                    shell.publish(ParamMessage::EndSetParameter(self.param.as_ptr()));
                 }
             }
             Event::Keyboard(keyboard::Event::ModifiersChanged(modifiers)) => {
