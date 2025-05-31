@@ -211,12 +211,15 @@ impl<'a, const BANDS: usize> Widget<ParamMessage, Renderer> for Equalizer<'a, BA
 
                 let band_color = style.band_colors[index % style.band_colors.len()];
 
-                if let Some(node_fill) = style.node_style.fill {
-                    let fill_alpha = node_fill.color.a;
-                    frame.fill(&path, Fill {
-                        color: band_color.with_alpha(fill_alpha),
-                        ..node_fill
-                    });
+                // Draw node fill if not bypassed
+                if !self.params.bands[index].bypass.value() {
+                    if let Some(node_fill) = style.node_style.fill {
+                        let fill_alpha = node_fill.color.a;
+                        frame.fill(&path, Fill {
+                            color: band_color.with_alpha(fill_alpha),
+                            ..node_fill
+                        });
+                    }
                 }
 
                 if let Some(node_stroke) = style.node_style.stroke {
