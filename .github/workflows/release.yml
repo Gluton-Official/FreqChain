@@ -44,17 +44,10 @@ jobs:
 
       - run: cargo xtask bundle freqchain --release
 
-      - uses: actions/upload-artifact@v4
-        with:
-          if-no-files-found: error
-          path: |
-            target/bundled/*.clap
-            target/bundled/*.so
-            target/bundled/**/*.vs3
-
       - uses: softprops/action-gh-release@v1
         with:
           prerelease: true
+          generate_release_notes: true
           files: |
             target/bundled/*.clap
             target/bundled/*.vst3
