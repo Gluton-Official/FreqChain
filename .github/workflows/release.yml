@@ -44,13 +44,12 @@ jobs:
 
       - run: cargo xtask bundle freqchain --release
 
-      - uses: softprops/action-gh-release@v1
+      - uses: softprops/action-gh-release@v2
         with:
-          prerelease: true
           generate_release_notes: true
           files: |
-            target/bundled/*.clap
-            target/bundled/**/*.vs3
-            target/bundled/*.so
+            target/bundled/FreqChain.clap
+            target/bundled/FreqChain.vst3
+            target/bundled/FreqChain
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
