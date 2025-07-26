@@ -50,7 +50,7 @@ jobs:
           generate_release_notes: true
           files: |
             target/bundled/*.clap
-            target/bundled/*.vst3
             target/bundled/**/*.vs3
+            target/bundled/*.so
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
