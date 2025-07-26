@@ -24,7 +24,21 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libasound2-dev pkg-config libjack-jackd2-dev
+          sudo apt-get install -y \
+            libgl1-mesa-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libasound2-dev \
+            pkg-config \
+            libjack-jackd2-dev \
+            libxcb-render0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxcb-icccm4-dev \
+            libx11-xcb-dev \
+            libxcb-dri2-0-dev
 
       - uses: Swatinem/rust-cache@v2
 
