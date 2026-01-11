@@ -32,10 +32,6 @@ pub struct FreqChain {
     equalizer: Equalizer<EQ_BAND_COUNT, CHANNELS>,
 
     frequency_sidechain: FrequencySidechain<CHANNELS, FFT_WINDOW_SIZE, FFT_HOP_SIZE, SPECTRUM_SIZE>,
-    
-    input_buffer_out: Option<Arc<triple_buffer::Output<Vec<Vec<Complex32>>>>>,
-    sidechain_buffer_out: Option<Arc<triple_buffer::Output<Vec<Vec<Complex32>>>>>,
-    output_buffer_out: Option<Arc<triple_buffer::Output<Vec<Vec<Complex32>>>>>,
 }
 
 /// The [`Params`] derive macro provides the plugin wrapper (e.g. within a DAW) the plugin's
@@ -192,10 +188,6 @@ impl Default for FreqChain {
             equalizer: Equalizer::<EQ_BAND_COUNT, CHANNELS>::default(),
 
             frequency_sidechain: FrequencySidechain::<CHANNELS, FFT_WINDOW_SIZE, FFT_HOP_SIZE, SPECTRUM_SIZE>::default(),
-            
-            input_buffer_out: None,
-            sidechain_buffer_out: None,
-            output_buffer_out: None,
         }
     }
 }

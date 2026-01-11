@@ -1,12 +1,8 @@
-use std::collections::Bound;
-use std::ops::{Range, RangeBounds};
+use std::ops::Range;
 use nih_plug_iced::{Point, Rectangle, Vector};
-use crate::util::remap::{map_normalized_ranged, normalize_ranged};
+use crate::util::remap::normalize_ranged;
 
-/// The rate of change for the value compared to the drag distance
-const DRAG_SENSITIVITY: f32 = 0.005;
-
-/// The multiplier applied to [DRAG_SENSITIVITY] when granular dragging
+/// The distance multiplier when granular dragging
 const GRANULAR_SENSITIVITY_MULTIPLIER: f32 = 0.1;
 
 pub trait DragTrait {

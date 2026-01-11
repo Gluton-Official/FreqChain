@@ -1,5 +1,4 @@
 use nih_plug::buffer::Buffer;
-use realfft::num_complex::Complex32;
 
 pub trait BufferUtils<T> {
     /// ### Arguments for F

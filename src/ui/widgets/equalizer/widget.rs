@@ -134,7 +134,7 @@ impl<'a, const BANDS: usize> Widget<ParamMessage, Renderer> for Equalizer<'a, BA
 
             // EQ Line
             {
-                let mut points = (0..=frame_bounds.width as usize).map(|i| {
+                let points = (0..=frame_bounds.width as usize).map(|i| {
                     let point_x = remap_rect_x_t(&frame_bounds, i as f32 / frame_bounds.width);
                     let point_frequency = self.x_to_frequency(&frame_bounds, point_x);
                     let point_db = self.params.bands.iter()
@@ -313,7 +313,6 @@ impl<'a, const BANDS: usize> Equalizer<'a, BANDS> {
 
     fn db_to_y(&self, bounds: &Rectangle, gain_db: f32) -> f32 {
         map_normalized(1.0 - normalize_ranged(gain_db, &self.db_range), bounds.y, bounds.y + bounds.height)
-        // remap_rect_y_t(bounds, 1.0 - normalize_ranged(gain_db, &self.db_range))
     }
 
     fn y_to_db(&self, bounds: &Rectangle, y: f32) -> f32 {

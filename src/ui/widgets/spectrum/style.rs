@@ -1,5 +1,5 @@
 use nih_plug_iced::{Color, Font};
-use nih_plug_iced::canvas::{Fill, LineCap, LineDash, LineJoin, Stroke};
+use nih_plug_iced::canvas::{Fill, Stroke};
 
 #[derive(Debug, Clone)]
 pub struct Style {

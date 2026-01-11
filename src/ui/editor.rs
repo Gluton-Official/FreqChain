@@ -15,14 +15,13 @@ use crate::FreqChain;
 use atomic_refcell::AtomicRefCell;
 use nih_plug::prelude::*;
 use nih_plug_iced::widgets::ParamMessage;
-use nih_plug_iced::{alignment, assets, create_iced_editor, executor, Alignment, Color, Column, Command, Container, Element, IcedEditor, IcedState, Length, Padding, Row, Rule, Space, Text, Widget, WindowQueue};
+use nih_plug_iced::{alignment, assets, create_iced_editor, executor, Alignment, Color, Column, Command, Container, Element, IcedEditor, IcedState, Length, Padding, Row, Rule, Space, Text, WindowQueue};
 use realfft::num_complex::Complex32;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 const EDITOR_WIDTH: u32 = 1000;
 const EDITOR_HEIGHT: u32 = 572;
-const FPS: f32 = 60.0;
 
 pub(crate) fn default_state() -> Arc<IcedState> {
     IcedState::from_size(EDITOR_WIDTH, EDITOR_HEIGHT)
