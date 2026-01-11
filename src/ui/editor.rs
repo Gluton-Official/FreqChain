@@ -131,6 +131,9 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
     }
 
     fn view(&mut self) -> Element<'_, Self::Message> {
+        // NOTE: the layout size given to elements has already been scaled,
+        //       meaning hard-set sizes don't scale, even though elements can see they have more room
+        
         let vertical_label = |text: &str| {
             Column::<Self::Message>::with_children(
                 text.chars().map(|char| {
