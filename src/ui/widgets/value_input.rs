@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use nih_plug_iced::{Clipboard, Event};
 use std::borrow::{Borrow, BorrowMut};
 use atomic_refcell::AtomicRefMut;

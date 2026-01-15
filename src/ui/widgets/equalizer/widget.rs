@@ -316,6 +316,7 @@ impl<'a, const BANDS: usize> Equalizer<'a, BANDS> {
         map_normalized(1.0 - normalize_ranged(gain_db, &self.db_range), bounds.y, bounds.y + bounds.height)
     }
 
+    #[allow(unused)]
     fn y_to_db(&self, bounds: &Rectangle, y: f32) -> f32 {
         map_normalized_ranged(1.0 - remap_rect_y_coordinate(bounds, y), &self.db_range)
     }
@@ -324,6 +325,7 @@ impl<'a, const BANDS: usize> Equalizer<'a, BANDS> {
         Point::new(self.frequency_to_x(bounds, frequency), self.db_to_y(bounds, db))
     }
 
+    #[allow(unused)]
     fn position_to_frequency_and_db(&self, bounds: &Rectangle, position: Point) -> (f32, f32) {
         (self.x_to_frequency(bounds, position.x), self.y_to_db(bounds, position.y))
     }
