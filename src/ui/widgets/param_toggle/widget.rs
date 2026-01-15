@@ -4,7 +4,7 @@ use nih_plug::prelude::Param;
 
 use nih_plug_iced::backend::Renderer;
 use nih_plug_iced::text::Renderer as TextRenderer;
-use nih_plug_iced::{canvas, event, layout, mouse, renderer, touch, Clipboard, Element, Event, Font, Layout, Length, Point, Rectangle, Shell, Size, Widget};
+use nih_plug_iced::{canvas, event, layout, mouse, renderer, touch, Clipboard, Element, Event, Font, Layout, Length, Padding, Point, Rectangle, Shell, Size, Widget};
 use nih_plug_iced::alignment::{Horizontal, Vertical};
 use nih_plug_iced::canvas::Text;
 use nih_plug_iced::widgets::ParamMessage;
@@ -19,6 +19,7 @@ where
 
     width: Length,
     height: Length,
+    padding: Padding,
     text_size: Option<u16>,
     font: Font,
     label: String,
@@ -120,9 +121,10 @@ where
             _ => {}
         }
 
+        let padding = self.padding;
         let toggle_bounds = Rectangle::new(
-            Point::new(bounds.x, bounds.y + toggle_offset_y),
-            Size::new(bounds.width, toggle_available_height),
+            Point::new(bounds.x + padding.left as f32, bounds.y + toggle_offset_y + padding.top as f32),
+            Size::new(bounds.width - padding.horizontal() as f32, toggle_available_height - padding.vertical() as f32),
         );
 
         let normalized_value = self.param.modulated_normalized_value();
@@ -183,6 +185,7 @@ where
 
             width: Length::Units(30),
             height: Length::Units(20),
+            padding: Padding::ZERO,
             text_size: None,
             font: <Renderer as TextRenderer>::Font::default(),
             
@@ -204,6 +207,12 @@ where
     /// Sets the height of the [`ParamSlider`].
     pub fn height(mut self, height: Length) -> Self {
         self.height = height;
+        self
+    }
+
+    /// Sets teh padding of the [`ParamToggle`]
+    pub fn padding(mut self, padding: impl Into<Padding>) -> Self {
+        self.padding = padding.into();
         self
     }
 
