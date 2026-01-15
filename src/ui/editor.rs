@@ -428,6 +428,7 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
             // .explain(Color::from_rgb8(255, 255, 0))
             ;
 
+        // TODO: add padding to these toggles
         let low_shelf_toggle = ParamToggle::new(
             &active_band.band_type,
         )
@@ -435,6 +436,7 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
             .style(self.theme.band_shape_toggle(BandType::LowShelf, active_band_color))
             .width(Length::FillPortion(3))
             .height(Length::Fill)
+            .padding(6)
             .map(Message::ParamUpdate);
         let peak_toggle = ParamToggle::new(
             &active_band.band_type,
@@ -443,6 +445,7 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
             .style(self.theme.band_shape_toggle(BandType::Peak, active_band_color))
             .width(Length::FillPortion(2))
             .height(Length::Fill)
+            .padding(6)
             .map(Message::ParamUpdate);
         let high_shelf_toggle = ParamToggle::new(
             &active_band.band_type,
@@ -451,6 +454,7 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
             .style(self.theme.band_shape_toggle(BandType::HighShelf, active_band_color))
             .width(Length::FillPortion(3))
             .height(Length::Fill)
+            .padding(6)
             .map(Message::ParamUpdate);
 
         let high_pass_toggle = ParamToggle::new(
@@ -460,6 +464,7 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
             .style(self.theme.band_shape_toggle(BandType::HighPass, active_band_color))
             .width(Length::FillPortion(3))
             .height(Length::Fill)
+            .padding(6)
             .map(Message::ParamUpdate);
         let notch_toggle = ParamToggle::new(
             &active_band.band_type,
@@ -468,6 +473,7 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
             .style(self.theme.band_shape_toggle(BandType::Notch, active_band_color))
             .width(Length::FillPortion(2))
             .height(Length::Fill)
+            .padding(6)
             .map(Message::ParamUpdate);
         let low_pass_toggle = ParamToggle::new(
             &active_band.band_type,
@@ -476,6 +482,7 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
             .style(self.theme.band_shape_toggle(BandType::LowPass, active_band_color))
             .width(Length::FillPortion(3))
             .height(Length::Fill)
+            .padding(6)
             .map(Message::ParamUpdate);
 
         let equalizer_group = Row::new()
@@ -501,12 +508,10 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
                 .push(Element::<Message>::from(Column::new()
                     .width(Length::Fill)
                     .height(Length::FillPortion(2))
-                    .padding(8)
-                    .spacing(12)
+                    .padding(2)
                     .push(Row::new()
                         .width(Length::Fill)
                         .height(Length::FillPortion(1))
-                        .spacing(12)
                         .push(low_shelf_toggle)
                         .push(peak_toggle)
                         .push(high_shelf_toggle)
@@ -514,7 +519,6 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
                     .push(Row::new()
                         .width(Length::Fill)
                         .height(Length::FillPortion(1))
-                        .spacing(12)
                         .push(high_pass_toggle)
                         .push(notch_toggle)
                         .push(low_pass_toggle)
