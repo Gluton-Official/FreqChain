@@ -178,7 +178,7 @@ impl<'a, P: Param> ParamToggle<'a, P>
 where
     P::Plain: Copy
 {
-    /// Creates a new [`ParamSlider`] for the given parameter.
+    /// Creates a new [`ParamToggle`] for the given parameter.
     pub fn new(param: &'a P) -> Self {
         Self {
             param,
@@ -198,13 +198,13 @@ where
         }
     }
 
-    /// Sets the width of the [`ParamSlider`].
+    /// Sets the width of the [`ParamToggle`].
     pub fn width(mut self, width: Length) -> Self {
         self.width = width;
         self
     }
 
-    /// Sets the height of the [`ParamSlider`].
+    /// Sets the height of the [`ParamToggle`].
     pub fn height(mut self, height: Length) -> Self {
         self.height = height;
         self
@@ -216,13 +216,13 @@ where
         self
     }
 
-    /// Sets the text size of the [`ParamSlider`].
+    /// Sets the text size of the [`ParamToggle`].
     pub fn text_size(mut self, size: u16) -> Self {
         self.text_size = Some(size);
         self
     }
 
-    /// Sets the font of the [`ParamSlider`].
+    /// Sets the font of the [`ParamToggle`].
     pub fn font(mut self, font: Font) -> Self {
         self.font = font;
         self

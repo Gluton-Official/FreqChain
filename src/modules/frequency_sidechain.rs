@@ -19,6 +19,7 @@ pub struct FrequencySidechain<const CHANNELS: usize, const WINDOW_SIZE: usize, c
 
     /// Number of sample blocks the STFT process separately within the window
     overlap_times: usize,
+    /// Constant Overlap-Add constraint
     cola: f32,
 
     forward_fft: ForwardFFT<f32>,
@@ -64,8 +65,8 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize, const HOP_SIZE: usize, con
             inverse_fft,
 
             main_complex_buffer: fft::create_complex_buffer(WINDOW_SIZE),
-            // since the sidechain buffer's FFT is processed before the main buffer's FFT,
-            // we need a buffer to store the results for each channel
+            // Since the sidechain's FFT is processed separately from the main FFT,
+            // we need to temporarily store the results in a buffer for each channel
             sidechain_complex_buffer: (0..CHANNELS)
                 .map(|_| fft::create_complex_buffer(WINDOW_SIZE))
                 .collect(),
@@ -80,7 +81,6 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize, const HOP_SIZE: usize, con
         }
     }
 
-    // TODO: investigate debug profiling for some type of flame graph / do some timed tests
     pub fn process(&mut self, main_buffer: &mut Buffer, sidechain_buffer: &mut Buffer, sample_rate: f32, params: &FrequencySidechainParams) {
         // Accumulates samples until the block size (our FFT size) is reached, then runs the callback
         self.stft.process_overlap_add_sidechain(

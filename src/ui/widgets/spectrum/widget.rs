@@ -23,6 +23,8 @@ pub struct Spectrum<'a, const CHANNELS: usize, const BINS: usize> {
     height: Length,
 
     db_range: Range<f32>,
+    /// TODO: implement a frequency range constraint
+    #[allow(unused)]
     frequency_range: Range<f32>,
 
     style_sheet: Box<dyn StyleSheet + 'a>,
@@ -177,7 +179,7 @@ impl<'a, Message, const CHANNELS: usize, const BINS: usize> Widget<Message, Rend
 }
 
 impl<'a, const CHANNELS: usize, const BINS: usize> Spectrum<'a, CHANNELS, BINS> {
-    /// Creates a new [`ParamKnob`] for the given parameter.
+    /// Creates a new [`Spectrum`] for the given spectrum [`State`].
     pub fn new(state: &'a mut State<CHANNELS, BINS>) -> Self {
         Self {
             state,
@@ -192,13 +194,13 @@ impl<'a, const CHANNELS: usize, const BINS: usize> Spectrum<'a, CHANNELS, BINS> 
         }
     }
 
-    /// Sets the width of the [`ParamKnob`].
+    /// Sets the width of the [`Spectrum`].
     pub fn width(mut self, width: Length) -> Self {
         self.width = width;
         self
     }
 
-    /// Sets the height of the [`ParamKnob`].
+    /// Sets the height of the [`Spectrum`].
     pub fn height(mut self, height: Length) -> Self {
         self.height = height;
         self

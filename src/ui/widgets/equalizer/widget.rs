@@ -244,6 +244,7 @@ impl<'a, const BANDS: usize> Widget<ParamMessage, Renderer> for Equalizer<'a, BA
 
 
 impl<'a, const BANDS: usize> Equalizer<'a, BANDS> {
+    /// Creates a new [`Equalizer`] for the given equalizer [`State`] and [`EqualizerParams`].
     pub fn new(state: &'a mut State, params: &'a EqualizerParams<BANDS>, sample_rate: f32) -> Self {
         Self {
             state,
