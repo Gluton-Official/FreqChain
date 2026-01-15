@@ -527,6 +527,18 @@ impl Theme {
                 }
             }
 
+            fn hovered(&self) -> param_toggle::Style {
+                param_toggle::Style {
+                    button: Some(ButtonStyle {
+                        stroke: Stroke::default().with_color(self.color.lerp_to(self.theme.foreground, 0.5)),
+
+                        ..self.style().button.unwrap_or(<Theme as param_toggle::StyleSheet>::hovered(&self.theme).button.unwrap_or_default())
+                    }),
+
+                    ..self.style()
+                }
+            }
+
             fn active(&self) -> param_toggle::Style {
                 param_toggle::Style {
                     button: Some(ButtonStyle {
