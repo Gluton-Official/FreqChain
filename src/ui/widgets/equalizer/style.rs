@@ -1,5 +1,5 @@
 use crate::ui::ColorUtils;
-use nih_plug_iced::canvas::{Fill, Stroke};
+use nih_plug_iced::canvas::{Fill, LineDash, Stroke};
 use nih_plug_iced::{Color, Font};
 
 #[derive(Debug, Clone)]
@@ -10,6 +10,8 @@ pub struct Style {
     
     pub line: Stroke<'static>,
     pub fill: Fill,
+
+    pub baseline: Option<Stroke<'static>>,
     
     /// Uses respective band color, preserves alpha
     pub band_line: Stroke<'static>,
@@ -40,6 +42,16 @@ impl Default for Style {
 
             line: Stroke::default().with_width(2.0),
             fill: Color::BLACK.with_alpha(0.01).into(),
+
+            baseline: Some(Stroke {
+                line_dash: LineDash {
+                    segments: &[4.0; 2],
+
+                    ..LineDash::default()
+                },
+
+                ..Stroke::default()
+            }),
             
             band_line: Stroke::default().with_width(2.0),
             band_fill: Color::BLACK.with_alpha(0.01).into(),

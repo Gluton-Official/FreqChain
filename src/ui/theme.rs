@@ -8,7 +8,7 @@ use crate::ui::widgets::{equalizer, param_knob, param_slider, param_toggle, spec
 use crate::ui::ColorUtils;
 use nih_plug::prelude::FloatRange;
 use nih_plug::util;
-use nih_plug_iced::canvas::{Fill, FillRule, Path, Stroke};
+use nih_plug_iced::canvas::{Fill, FillRule, LineDash, Path, Stroke};
 use nih_plug_iced::{assets, container, rule, text_input, Background, Color, Font, Point, Vector};
 use nih_plug_iced::canvas::path::Arc;
 use crate::freqchain::StereoMode;
@@ -728,7 +728,16 @@ impl equalizer::StyleSheet for Theme {
             
             line: Stroke::default().with_color(self.foreground),
             fill: self.foreground.with_alpha(0.01).into(),
-            
+
+            baseline: Some(Stroke {
+                line_dash: LineDash {
+                    segments: &[4.0; 2],
+                    offset: 0,
+                },
+
+                ..Stroke::default().with_color(self.foreground.with_alpha(0.1))
+            }),
+
             band_line: Stroke::default(),
             band_fill: Color::default().with_alpha(0.01).into(),
             band_colors: vec![self.orange, self.yellow, self.green, self.cyan, self.blue, self.purple, self.magenta],

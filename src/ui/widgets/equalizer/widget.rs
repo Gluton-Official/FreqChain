@@ -132,6 +132,15 @@ impl<'a, const BANDS: usize> Widget<ParamMessage, Renderer> for Equalizer<'a, BA
             let frame_bounds = Rectangle::new(Point::ORIGIN, bounds.size());
             let node_bounds = self.calculate_node_bounds(&frame_bounds);
 
+            // Baseline
+            if let Some(baseline_stroke) = style.baseline {
+                let baseline_path = Path::line(
+                    Point::new(frame_bounds.x, frame_bounds.center_y()),
+                    Point::new(frame_bounds.x + frame_bounds.width, frame_bounds.center_y())
+                );
+                frame.stroke(&baseline_path, baseline_stroke);
+            }
+
             // EQ Line
             {
                 let points = (0..=frame_bounds.width as usize).map(|i| {
@@ -165,8 +174,7 @@ impl<'a, const BANDS: usize> Widget<ParamMessage, Renderer> for Equalizer<'a, BA
                 frame.fill(&fill_path, style.fill)
             }
 
-            // Band Line
-            // show if dragging or hovering
+            // Band Line (shown if dragging or hovering)
             if let Some(index) = self.state.drag_state.borrow()
                 .map(|_| self.state.active_node_index)
                 .or_else(|| {
