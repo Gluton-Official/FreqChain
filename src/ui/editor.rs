@@ -1,4 +1,4 @@
-use crate::freqchain::FreqChainParams;
+use crate::freqchain::{FreqChainParams, StereoMode};
 use crate::modules::equalizer::BandType;
 use crate::ui::theme::FreqChainTheme;
 use crate::ui::theme::Theme;
@@ -196,22 +196,21 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
             .height(Length::Fill)
             .map(Message::ParamUpdate);
 
-        // TODO: change mono_processing to stereo_mode enum
         let mono_toggle = ParamToggle::new(
-            &self.params.mono_processing,
+            &self.params.stereo_mode,
         )
             .label("Mono")
-            .associated_value(true)
-            .style(self.theme.mono_toggle(true))
+            .associated_value(StereoMode::Mono)
+            .style(self.theme.stereo_mode_toggle(StereoMode::Mono))
             .width(30.into())
             .height(20.into())
             .map(Message::ParamUpdate);
         let stereo_toggle = ParamToggle::new(
-            &self.params.mono_processing,
+            &self.params.stereo_mode,
         )
             .label("Stereo")
-            .associated_value(false)
-            .style(self.theme.mono_toggle(false))
+            .associated_value(StereoMode::Stereo)
+            .style(self.theme.stereo_mode_toggle(StereoMode::Stereo))
             .width(30.into())
             .height(20.into())
             .map(Message::ParamUpdate);

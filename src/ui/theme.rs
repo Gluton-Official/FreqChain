@@ -11,6 +11,7 @@ use nih_plug::util;
 use nih_plug_iced::canvas::{Fill, FillRule, Path, Stroke};
 use nih_plug_iced::{assets, container, rule, text_input, Background, Color, Font, Point, Vector};
 use nih_plug_iced::canvas::path::Arc;
+use crate::freqchain::StereoMode;
 
 #[derive(Clone, Copy)]
 pub struct Theme {
@@ -309,27 +310,27 @@ impl param_toggle::StyleSheet for Theme {
 }
 
 impl Theme {
-    pub fn mono_toggle<'a>(self, mono_mode: bool) -> impl Into<Box<dyn param_toggle::StyleSheet + 'a>> {
+    pub fn stereo_mode_toggle<'a>(self, stereo_mode: StereoMode) -> impl Into<Box<dyn param_toggle::StyleSheet + 'a>> {
         fn circle_radius(scale: Vector) -> f32 {
             let min = f32::min(scale.x, scale.y);
             1.0 / 3.0 * min
         }
 
-        struct MonoToggle {
+        struct StereoModeToggle {
             theme: Theme,
-            mono_mode: bool,
+            stereo_mode: StereoMode,
         }
-        impl param_toggle::StyleSheet for MonoToggle {
+        impl param_toggle::StyleSheet for StereoModeToggle {
             fn style(&self) -> param_toggle::Style {
                 param_toggle::Style {
                     label_placement: None,
 
                     button: Some(ButtonStyle {
-                        draw_path: match self.mono_mode {
-                            true => |_value, center, scale| {
+                        draw_path: match self.stereo_mode {
+                            StereoMode::Mono => |_value, center, scale| {
                                 Path::circle(center, circle_radius(scale))
                             },
-                            false => |_value, center, scale| {
+                            StereoMode::Stereo => |_value, center, scale| {
                                 let radius = circle_radius(scale);
                                 let offset = Vector::new(radius * 2.0 / 3.0, 0.0);
                                 Path::new(|path| {
@@ -370,9 +371,9 @@ impl Theme {
                 }
             }
         }
-        MonoToggle {
+        StereoModeToggle {
             theme: self,
-            mono_mode
+            stereo_mode
         }
     }
 

@@ -41,8 +41,8 @@ pub struct FreqChainParams {
     #[persist = "editor_state"]
     pub editor_state: Arc<IcedState>,
 
-    #[id = "mono_processing"]
-    pub mono_processing: BoolParam,
+    #[id = "stereo_mode"]
+    pub stereo_mode: EnumParam<StereoMode>,
 
     #[nested(id_prefix = "sidechain_input", group = "Sidechain Input")]
     pub sidechain_input: SidechainInputParams,
@@ -59,6 +59,14 @@ pub struct SidechainInputParams {
     pub solo: BoolParam,
     #[id = "gain"]
     pub gain: FloatParam,
+}
+
+#[derive(Enum, Debug, Copy, Clone, PartialEq)]
+pub enum StereoMode {
+    #[id = "mono"]
+    Mono,
+    #[id = "stereo"]
+    Stereo,
 }
 
 impl Plugin for FreqChain {
@@ -142,7 +150,7 @@ impl Plugin for FreqChain {
     ) -> ProcessStatus {
         let sidechain_buffer = &mut aux.inputs[0];
 
-        if self.params.mono_processing.value() && sidechain_buffer.channels() != 1 {
+        if self.params.stereo_mode.value() == StereoMode::Mono && sidechain_buffer.channels() != 1 {
             let channels = sidechain_buffer.channels() as f32;
             for mut sidechain_channel_samples in sidechain_buffer.iter_samples() {
                 let averaged_sample = sidechain_channel_samples.iter_mut().map(|x| *x / channels).sum();
@@ -197,7 +205,7 @@ impl Default for FreqChainParams {
         Self {
             editor_state: editor::default_state(),
 
-            mono_processing: BoolParam::new("Mono Processing", false),
+            stereo_mode: EnumParam::new("Stereo Mode", StereoMode::Stereo),
 
             sidechain_input: SidechainInputParams::default(),
 
