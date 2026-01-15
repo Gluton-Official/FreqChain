@@ -283,14 +283,14 @@ where
                         if self.param.modulated_plain_value() != self.associated_value.unwrap() {
                             shell.publish(ParamMessage::BeginSetParameter(self.param.as_ptr()));
                             self.set_plain_value(shell, self.associated_value.unwrap());
-                            shell.publish(ParamMessage::BeginSetParameter(self.param.as_ptr()));
+                            shell.publish(ParamMessage::EndSetParameter(self.param.as_ptr()));
 
                             return Some(event::Status::Captured)
                         }
                     } else {
                         shell.publish(ParamMessage::BeginSetParameter(self.param.as_ptr()));
                         self.set_normalized_value(shell, 1.0 - self.param.modulated_normalized_value().round());
-                        shell.publish(ParamMessage::BeginSetParameter(self.param.as_ptr()));
+                        shell.publish(ParamMessage::EndSetParameter(self.param.as_ptr()));
 
                         return Some(event::Status::Captured)
                     }
