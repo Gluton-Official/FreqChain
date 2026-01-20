@@ -19,6 +19,7 @@ use nih_plug_iced::{alignment, assets, create_iced_editor, executor, Alignment, 
 use realfft::num_complex::Complex32;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use crate::util::gain_range_from_db;
 
 const EDITOR_WIDTH: u32 = 1000;
 const EDITOR_HEIGHT: u32 = 572;
@@ -184,14 +185,7 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
             &self.params.sidechain_input.gain
         )
             .label("Gain")
-            .style(self.theme.slider(
-                FloatRange::Skewed {
-                    min: util::db_to_gain(util::MINUS_INFINITY_DB),
-                    max: util::db_to_gain(24.0),
-                    factor: FloatRange::gain_skew_factor(util::MINUS_INFINITY_DB, 24.0)
-                }
-                    .normalize(util::db_to_gain(0.0))
-            ))
+            .style(self.theme.slider(gain_range_from_db(util::MINUS_INFINITY_DB, 24.0).normalize(util::db_to_gain(0.0))))
             .width(26.into())
             .height(Length::Fill)
             .map(Message::ParamUpdate);

@@ -14,6 +14,7 @@ use crate::modules::frequency_sidechain::FrequencySidechainParams;
 use crate::ui::editor;
 
 use crate::util::buffer_utils::BufferUtils;
+use crate::util::gain_range_from_db;
 
 const CHANNELS: usize = 2;
 
@@ -222,12 +223,7 @@ impl Default for SidechainInputParams {
             gain: FloatParam::new(
                 "Sidechain Input Gain",
                 util::db_to_gain(0.0),
-                FloatRange::Skewed {
-                    min: util::db_to_gain(util::MINUS_INFINITY_DB),
-                    max: util::db_to_gain(24.0),
-                    // skew the float gain value to be linear decibels
-                    factor: FloatRange::gain_skew_factor(util::MINUS_INFINITY_DB, 24.0),
-                },
+                gain_range_from_db(util::MINUS_INFINITY_DB, 24.0),
             )
             // Smooth the gain parameter logarithmically because it is in linear gain
             // TODO: test w/ & w/o smoothing
