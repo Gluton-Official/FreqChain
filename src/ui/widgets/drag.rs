@@ -148,10 +148,9 @@ impl DragTrait for DragState2D {
         // Negate to correct Y being upside down
         drag_distance = Vector::new(drag_distance.x, -drag_distance.y);
 
-        // let value_delta = drag_distance * DRAG_SENSITIVITY;
         let value_delta = Vector {
-            x: normalize_ranged(drag_distance.x, &(0f32..bounds.width)),
-            y: normalize_ranged(drag_distance.y, &(0f32..bounds.height)),
+            x: drag_distance.x / bounds.width,
+            y: drag_distance.y / bounds.height,
         };
         self.initial_value + value_delta
     }
