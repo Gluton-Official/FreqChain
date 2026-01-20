@@ -5,7 +5,7 @@ use crate::ui::widgets::drag::{DragState2D, DragTrait};
 use crate::ui::widgets::equalizer::{FrequencyGridlinesStyle, StyleSheet};
 use crate::ui::{ColorUtils, RectangleExt};
 use crate::util::biquad_filter::BiquadFilter;
-use crate::util::remap::{map_normalized, map_normalized_inv_log10_ranged, map_normalized_ranged, normalize_log10_ranged, normalize_ranged};
+use crate::util::remap::{map_normalized, map_normalized_log10_ranged, map_normalized_ranged, normalize_log10_ranged, normalize_ranged};
 use atomic_refcell::AtomicRefCell;
 use nih_plug::params::Param;
 use nih_plug::util::MINUS_INFINITY_DB;
@@ -330,7 +330,7 @@ impl<'a, const BANDS: usize> Equalizer<'a, BANDS> {
     /// by a `Rectangle`) and maps it to a frequency value using an inverse logarithmic scale.
     /// The frequency is calculated based on the `self.frequency_range`.
     fn x_to_frequency(&self, bounds: &Rectangle, x: f32) -> f32 {
-        map_normalized_inv_log10_ranged(remap_rect_x_coordinate(bounds, x), &self.frequency_range)
+        map_normalized_log10_ranged(remap_rect_x_coordinate(bounds, x), &self.frequency_range)
     }
 
     fn db_to_y(&self, bounds: &Rectangle, gain_db: f32) -> f32 {
@@ -442,6 +442,17 @@ impl<'a, const BANDS: usize> Equalizer<'a, BANDS> {
         }
     }
 
+    fn set_plain_value<P: Param>(&self, shell: &mut Shell<'_, ParamMessage>, param: &P, plain_value: P::Plain) {
+        let current_plain_value = param.modulated_plain_value();
+        if plain_value != current_plain_value {
+            let normalized_plain_value = param.preview_normalized(plain_value);
+            shell.publish(ParamMessage::SetParameterNormalized(
+                param.as_ptr(),
+                normalized_plain_value,
+            ))
+        }
+    }
+
     fn handle_input_event(
         &mut self,
         event: Event,
@@ -482,7 +493,7 @@ impl<'a, const BANDS: usize> Equalizer<'a, BANDS> {
                             let mut drag_state = self.state.drag_state.borrow_mut();
                             *drag_state = Some(DragState2D::new_and_start_granular(cursor_position,
                                 Vector {
-                                    x: band_params.frequency.modulated_normalized_value(),
+                                    x: normalize_log10_ranged(band_params.frequency.modulated_plain_value(), &self.frequency_range),
                                     y: band_params.db.modulated_normalized_value(),
                                 }
                             ));
@@ -495,7 +506,7 @@ impl<'a, const BANDS: usize> Equalizer<'a, BANDS> {
                             let mut drag_state = self.state.drag_state.borrow_mut();
                             *drag_state = Some(DragState2D::new(cursor_position,
                                 Vector {
-                                    x: band_params.frequency.modulated_normalized_value(),
+                                    x: normalize_log10_ranged(band_params.frequency.modulated_plain_value(), &self.frequency_range),
                                     y: band_params.db.modulated_normalized_value()
                                 }
                             ));
@@ -531,8 +542,11 @@ impl<'a, const BANDS: usize> Equalizer<'a, BANDS> {
                         drag_state.stop_granular(cursor_position);
                     }
 
+                    // TODO: dragging halfway across the eq's frequency range results in a normalized value of 0.5,
+                    //       which is 2.5kHz based on the FloatParam's skew factor, even though 2.5kHz is closer to
+                    //       0.666 based on frequency_to_x's normalization
                     let normalized_vector = drag_state.value(*bounds, cursor_position);
-                    self.set_normalized_value(shell, &band_params.frequency, normalized_vector.x);
+                    self.set_plain_value(shell, &band_params.frequency, map_normalized_log10_ranged(normalized_vector.x, &self.frequency_range));
                     self.set_normalized_value(shell, &band_params.db, normalized_vector.y);
 
                     return Some(event::Status::Captured);

@@ -11,8 +11,7 @@ where
 
 #[inline]
 pub fn normalize_log10<S: Float>(value: S, min: S, max: S) -> S {
-    let log_offset = if min < S::one() { S::one() - min } else { S::zero() };
-    normalize((value + log_offset).log10(), (min + log_offset).log10(), (max + log_offset).log10())
+    (value / min).log10() / (max / min).log10()
 }
 
 #[inline]
@@ -40,8 +39,8 @@ where
 }
 
 #[inline]
-pub fn map_normalized_inv_log10<S: Float>(normalized_value: S, target_min: S, target_max: S) -> S {
-    S::from(10).unwrap().powf(map_normalized(normalized_value, target_min.log10(), target_max.log10()))
+pub fn map_normalized_log10<S: Float>(normalized_value: S, target_min: S, target_max: S) -> S {
+    target_min * S::from(10).unwrap().powf(normalized_value * (target_max / target_min).log10())
 }
 
 #[inline]
@@ -55,9 +54,9 @@ where
 }
 
 #[inline]
-pub fn map_normalized_inv_log10_ranged<S: Float, R: RangeBounds<S>>(normalized_value: S, target_range: &R) -> S {
+pub fn map_normalized_log10_ranged<S: Float, R: RangeBounds<S>>(normalized_value: S, target_range: &R) -> S {
     let (min, max) = range_bounds(target_range);
-    map_normalized_inv_log10(normalized_value, min, max)
+    map_normalized_log10(normalized_value, min, max)
 }
 
 #[inline]
