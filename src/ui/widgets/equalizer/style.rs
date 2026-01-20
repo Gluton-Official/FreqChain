@@ -11,7 +11,10 @@ pub struct Style {
     pub line: Stroke<'static>,
     pub fill: Fill,
 
+    /// Horizontal line marking 0db
     pub baseline: Option<Stroke<'static>>,
+    /// Vertical lines marking select frequencies
+    pub frequency_gridlines: Option<FrequencyGridlinesStyle>,
     
     /// Uses respective band color, preserves alpha
     pub band_line: Stroke<'static>,
@@ -33,6 +36,12 @@ pub struct NodeStyle {
     pub active_ring_stroke: Option<Stroke<'static>>,
 }
 
+#[derive(Debug, Clone)]
+pub struct FrequencyGridlinesStyle {
+    pub stroke: Stroke<'static>,
+    pub frequency_values: Vec<f32>,
+}
+
 impl Default for Style {
     fn default() -> Self {
         Self {
@@ -52,6 +61,7 @@ impl Default for Style {
 
                 ..Stroke::default()
             }),
+            frequency_gridlines: Some(FrequencyGridlinesStyle::default()),
             
             band_line: Stroke::default().with_width(2.0),
             band_fill: Color::BLACK.with_alpha(0.01).into(),
@@ -76,6 +86,22 @@ impl Default for NodeStyle {
             stroke: Some(Stroke::default()),
             fill: Some(Color::BLACK.with_alpha(0.5).into()),
             active_ring_stroke: Some(Stroke::default().with_color(Color::BLACK.with_alpha(0.5))),
+        }
+    }
+}
+
+impl Default for FrequencyGridlinesStyle {
+    fn default() -> Self {
+        Self {
+            stroke: Stroke::default(),
+            // increments the leading digit by 1
+            frequency_values: (1..).flat_map(|power| {
+                let base = 10_f32.powi(power);
+                (1..=9).map(move |i| i as f32 * base)
+            })
+                .skip_while(|&v| v < 20.0)
+                .take_while(|&v| v <= 20_000.0)
+                .collect(),
         }
     }
 }

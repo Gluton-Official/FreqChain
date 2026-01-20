@@ -2,7 +2,7 @@
 
 use crate::modules::equalizer::{BandParams, BandType, EqualizerParams};
 use crate::ui::widgets::drag::{DragState2D, DragTrait};
-use crate::ui::widgets::equalizer::StyleSheet;
+use crate::ui::widgets::equalizer::{FrequencyGridlinesStyle, StyleSheet};
 use crate::ui::{ColorUtils, RectangleExt};
 use crate::util::biquad_filter::BiquadFilter;
 use crate::util::remap::{map_normalized, map_normalized_inv_log10_ranged, map_normalized_ranged, normalize_log10_ranged, normalize_ranged};
@@ -139,6 +139,19 @@ impl<'a, const BANDS: usize> Widget<ParamMessage, Renderer> for Equalizer<'a, BA
                     Point::new(frame_bounds.x + frame_bounds.width, frame_bounds.center_y())
                 );
                 frame.stroke(&baseline_path, baseline_stroke);
+            }
+
+            // Frequency gridlines
+            if let Some(FrequencyGridlinesStyle { stroke, frequency_values }) = style.frequency_gridlines {
+                let path = Path::new(|path| {
+                    for frequency_value in frequency_values {
+                        let x = self.frequency_to_x(&frame_bounds, frequency_value);
+
+                        path.move_to(Point::new(x, 0.0));
+                        path.line_to(Point::new(x, frame_bounds.height));
+                    }
+                });
+                frame.stroke(&path, stroke);
             }
 
             // EQ Line

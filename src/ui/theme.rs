@@ -12,6 +12,7 @@ use nih_plug_iced::canvas::{Fill, FillRule, LineDash, Path, Stroke};
 use nih_plug_iced::{assets, container, rule, text_input, Background, Color, Font, Point, Vector};
 use nih_plug_iced::canvas::path::Arc;
 use crate::freqchain::StereoMode;
+use crate::ui::widgets::equalizer::FrequencyGridlinesStyle;
 
 #[derive(Clone, Copy)]
 pub struct Theme {
@@ -736,6 +737,11 @@ impl equalizer::StyleSheet for Theme {
                 },
 
                 ..Stroke::default().with_color(self.foreground.with_alpha(0.1))
+            }),
+            frequency_gridlines: Some(FrequencyGridlinesStyle {
+                stroke: Stroke::default().with_color(self.foreground.with_alpha(0.05)),
+
+                ..FrequencyGridlinesStyle::default()
             }),
 
             band_line: Stroke::default(),
