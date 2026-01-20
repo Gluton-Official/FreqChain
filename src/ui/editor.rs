@@ -389,7 +389,7 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
 
         let band_gain = ParamSlider::new(
             &mut self.band_gain_state,
-            &active_band.gain
+            &active_band.db
         )
             .label("Gain")
             .style(self.theme.slider(0.5))

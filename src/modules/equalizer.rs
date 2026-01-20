@@ -32,8 +32,8 @@ pub struct BandParams {
     pub frequency: FloatParam,
     #[id = "q"]
     pub q: FloatParam,
-    #[id = "gain"]
-    pub gain: FloatParam,
+    #[id = "db"]
+    pub db: FloatParam,
     #[id = "bypass"]
     pub bypass: BoolParam,
 
@@ -98,7 +98,7 @@ impl<const BANDS: usize, const CHANNELS: usize> Equalizer<BANDS, CHANNELS> {
                     if matches!(
                         band_params.band_type.value(),
                         BandType::Peak | BandType::HighShelf | BandType::LowShelf
-                    ) && band_params.gain.value() == 0_f32 {
+                    ) && band_params.db.value() == 0_f32 {
                         continue;
                     }
 
@@ -126,7 +126,7 @@ impl<const BANDS: usize, const CHANNELS: usize> Equalizer<BANDS, CHANNELS> {
 }
 
 impl BandParams {
-    fn new(band_number: i32, band_type: BandType, frequency: f32, q: f32, gain: f32) -> Self {
+    fn new(band_number: i32, band_type: BandType, frequency: f32, q: f32, db: f32) -> Self {
         // Initialize as dirty just in case default bands actually do something
         let dirty = Arc::new(AtomicBool::new(true));
 
@@ -164,9 +164,9 @@ impl BandParams {
                     let dirty = dirty.clone();
                     move |_| dirty.store(true, Ordering::SeqCst)
                 })),
-            gain: FloatParam::new(
+            db: FloatParam::new(
                 format!("{band_name} Gain"),
-                gain,
+                db,
                 FloatRange::Linear { min: -18.0, max: 18.0 },
             )
                 .with_unit("dB")
@@ -193,7 +193,7 @@ impl BandParams {
         match self.band_type.value() {
             BandType::Peak => {
                 // linear gain
-                let A = 10_f32.powf(self.gain.value() / 40_f32);
+                let A = 10_f32.powf(self.db.value() / 40_f32);
                 let a0 = 1_f32 + alpha / A;
                 BiquadFilter {
                     b0:  (1_f32 + alpha * A) / a0,
@@ -214,7 +214,7 @@ impl BandParams {
                 }
             }
             BandType::HighShelf => {
-                let A = 10_f32.powf(self.gain.value() / 40_f32);
+                let A = 10_f32.powf(self.db.value() / 40_f32);
                 let sqrt_A_alpha_2 = 2_f32 * A.sqrt() * alpha;
                 let a0 = (A + 1_f32) - (A - 1_f32) * cos_w0 + sqrt_A_alpha_2;
                 BiquadFilter {
@@ -226,7 +226,7 @@ impl BandParams {
                 }
             }
             BandType::LowShelf => {
-                let A = 10_f32.powf(self.gain.value() / 40_f32);
+                let A = 10_f32.powf(self.db.value() / 40_f32);
                 let sqrt_A_alpha_2 = 2_f32 * A.sqrt() * alpha;
                 let a0 = (A + 1_f32) + (A - 1_f32) * cos_w0 + sqrt_A_alpha_2;
                 BiquadFilter {

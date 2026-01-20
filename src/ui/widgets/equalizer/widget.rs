@@ -339,7 +339,7 @@ impl<'a, const BANDS: usize> Equalizer<'a, BANDS> {
     }
 
     fn band_node_position(&self, bounds: &Rectangle, band_params: &BandParams) -> Point {
-        self.frequency_and_db_to_position(&bounds, band_params.frequency.value(), band_params.gain.value())
+        self.frequency_and_db_to_position(&bounds, band_params.frequency.value(), band_params.db.value())
     }
 
     fn calculate_node_bounds(&self, bounds: &Rectangle) -> Vec<Rectangle> {
@@ -371,7 +371,7 @@ impl<'a, const BANDS: usize> Equalizer<'a, BANDS> {
         if matches!(
             band_params.band_type.value(),
             BandType::Peak | BandType::HighShelf | BandType::LowShelf
-        ) && band_params.gain.value() == 0_f32 {
+        ) && band_params.db.value() == 0_f32 {
             return 0.0;
         }
 
@@ -456,34 +456,34 @@ impl<'a, const BANDS: usize> Equalizer<'a, BANDS> {
                             *drag_state = None;
 
                             shell.publish(ParamMessage::BeginSetParameter(band_params.frequency.as_ptr()));
-                            shell.publish(ParamMessage::BeginSetParameter(band_params.gain.as_ptr()));
+                            shell.publish(ParamMessage::BeginSetParameter(band_params.db.as_ptr()));
                             self.set_normalized_value(shell, &band_params.frequency, band_params.frequency.default_normalized_value());
-                            self.set_normalized_value(shell, &band_params.gain, band_params.gain.default_normalized_value());
+                            self.set_normalized_value(shell, &band_params.db, band_params.db.default_normalized_value());
                             shell.publish(ParamMessage::EndSetParameter(band_params.frequency.as_ptr()));
-                            shell.publish(ParamMessage::EndSetParameter(band_params.gain.as_ptr()));
+                            shell.publish(ParamMessage::EndSetParameter(band_params.db.as_ptr()));
                         } else if self.state.keyboard_modifiers.shift() {
                             // precise dragging
                             shell.publish(ParamMessage::BeginSetParameter(band_params.frequency.as_ptr()));
-                            shell.publish(ParamMessage::BeginSetParameter(band_params.gain.as_ptr()));
+                            shell.publish(ParamMessage::BeginSetParameter(band_params.db.as_ptr()));
 
                             let mut drag_state = self.state.drag_state.borrow_mut();
                             *drag_state = Some(DragState2D::new_and_start_granular(cursor_position,
                                 Vector {
                                     x: band_params.frequency.modulated_normalized_value(),
-                                    y: band_params.gain.modulated_normalized_value(),
+                                    y: band_params.db.modulated_normalized_value(),
                                 }
                             ));
                             self.state.active_node_index = hovering_node_index;
                         } else {
                             // drag
                             shell.publish(ParamMessage::BeginSetParameter(band_params.frequency.as_ptr()));
-                            shell.publish(ParamMessage::BeginSetParameter(band_params.gain.as_ptr()));
+                            shell.publish(ParamMessage::BeginSetParameter(band_params.db.as_ptr()));
 
                             let mut drag_state = self.state.drag_state.borrow_mut();
                             *drag_state = Some(DragState2D::new(cursor_position,
                                 Vector {
                                     x: band_params.frequency.modulated_normalized_value(),
-                                    y: band_params.gain.modulated_normalized_value()
+                                    y: band_params.db.modulated_normalized_value()
                                 }
                             ));
                             self.state.active_node_index = hovering_node_index;
@@ -499,7 +499,7 @@ impl<'a, const BANDS: usize> Equalizer<'a, BANDS> {
                 if drag_state.is_some() {
                     let band_params = &self.params.bands[self.state.active_node_index];
                     shell.publish(ParamMessage::EndSetParameter(band_params.frequency.as_ptr()));
-                    shell.publish(ParamMessage::EndSetParameter(band_params.gain.as_ptr()));
+                    shell.publish(ParamMessage::EndSetParameter(band_params.db.as_ptr()));
 
                     *drag_state = None;
 
@@ -520,7 +520,7 @@ impl<'a, const BANDS: usize> Equalizer<'a, BANDS> {
 
                     let normalized_vector = drag_state.value(*bounds, cursor_position);
                     self.set_normalized_value(shell, &band_params.frequency, normalized_vector.x);
-                    self.set_normalized_value(shell, &band_params.gain, normalized_vector.y);
+                    self.set_normalized_value(shell, &band_params.db, normalized_vector.y);
 
                     return Some(event::Status::Captured);
                 }
