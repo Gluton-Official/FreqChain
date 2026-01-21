@@ -140,11 +140,9 @@ impl BandParams {
             frequency: FloatParam::new(
                 format!("{band_name} Frequency"),
                 frequency,
-                // TODO: patch nih_plug to add a logarithmic FloatRange
-                FloatRange::Skewed {
+                FloatRange::Logarithmic {
                     min: 20.0,
                     max: 20_000.0,
-                    factor: 1.0 / 6.0, // closest skew factor for frequency
                 }
             )
                 .with_value_to_string(formatters::v2s_f32_hz_then_khz(0))

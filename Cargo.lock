@@ -1433,7 +1433,7 @@ dependencies = [
 [[package]]
 name = "nih_plug"
 version = "0.0.0"
-source = "git+https://github.com/robbert-vdh/nih-plug.git?rev=cd9b589d23e5ee63bf194cdd99d6bc612c1a4863#cd9b589d23e5ee63bf194cdd99d6bc612c1a4863"
+source = "git+https://github.com/Gluton-Official/nih-plug.git?branch=freqchain-rev#4454fb5e35753d59427e2cbd32e9eaff7c488e1a"
 dependencies = [
  "anyhow",
  "anymap",
@@ -1476,7 +1476,7 @@ source = "git+https://github.com/robbert-vdh/nih_plug_assets.git#a04e327923e120b
 [[package]]
 name = "nih_plug_derive"
 version = "0.1.0"
-source = "git+https://github.com/robbert-vdh/nih-plug.git?rev=cd9b589d23e5ee63bf194cdd99d6bc612c1a4863#cd9b589d23e5ee63bf194cdd99d6bc612c1a4863"
+source = "git+https://github.com/Gluton-Official/nih-plug.git?branch=freqchain-rev#4454fb5e35753d59427e2cbd32e9eaff7c488e1a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1486,7 +1486,7 @@ dependencies = [
 [[package]]
 name = "nih_plug_iced"
 version = "0.0.0"
-source = "git+https://github.com/robbert-vdh/nih-plug.git?rev=cd9b589d23e5ee63bf194cdd99d6bc612c1a4863#cd9b589d23e5ee63bf194cdd99d6bc612c1a4863"
+source = "git+https://github.com/Gluton-Official/nih-plug.git?branch=freqchain-rev#4454fb5e35753d59427e2cbd32e9eaff7c488e1a"
 dependencies = [
  "atomic_refcell",
  "baseview 0.1.0 (git+https://github.com/RustAudio/baseview.git?rev=1d9806d5bd92275d0d8142d9c9c90198757b9b25)",

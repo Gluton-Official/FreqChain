@@ -19,8 +19,10 @@ name = "freqchain-standalone"
 path = "src/main.rs"
 
 [dependencies]
-nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "cd9b589d23e5ee63bf194cdd99d6bc612c1a4863", features = ["assert_process_allocs", "standalone"] }
-nih_plug_iced = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "cd9b589d23e5ee63bf194cdd99d6bc612c1a4863", features = ["opengl", "opengl_canvas", "tokio"] }
+#nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "cd9b589d23e5ee63bf194cdd99d6bc612c1a4863", features = ["assert_process_allocs", "standalone"] }
+nih_plug = { git = "https://github.com/Gluton-Official/nih-plug.git", branch = "freqchain-rev", features = ["assert_process_allocs", "standalone"] }
+#nih_plug_iced = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "cd9b589d23e5ee63bf194cdd99d6bc612c1a4863", features = ["opengl", "opengl_canvas", "tokio"] }
+nih_plug_iced = { git = "https://github.com/Gluton-Official/nih-plug.git", branch = "freqchain-rev", features = ["opengl", "opengl_canvas", "tokio"] }
 atomic_refcell = "0.1.13"
 realfft = "3.3.0"
 triple_buffer = "7.0.0"

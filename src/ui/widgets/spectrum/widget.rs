@@ -2,7 +2,7 @@
 
 use crate::ui::editor::Message;
 use crate::ui::widgets::spectrum::{Alignment, BarStyle, Shape, StyleSheet};
-use crate::util::remap::{normalize_log10, normalize_ranged};
+use crate::util::remap::{normalize_logarithmic, normalize_ranged};
 use atomic_refcell::AtomicRefCell;
 use nih_plug::util::{gain_to_db, MINUS_INFINITY_DB};
 use nih_plug_iced::backend::Renderer;
@@ -98,7 +98,7 @@ impl<'a, Message, const CHANNELS: usize, const BINS: usize> Widget<Message, Rend
                         }
                         magnitude /= channels as f32;
 
-                        let bin_x = remap_rect_x_t(&bounds, normalize_log10(bin_index as f32 + 2.0, 2.0, bins as f32 + 2.0));
+                        let bin_x = remap_rect_x_t(&bounds, normalize_logarithmic(bin_index as f32 + 2.0, 2.0, bins as f32 + 2.0));
                         let bin_width = bin_x - prev_bin_x;
                         let line_x = prev_bin_x + bin_width / 2.0; // center line
                         prev_bin_x = bin_x;
@@ -128,7 +128,7 @@ impl<'a, Message, const CHANNELS: usize, const BINS: usize> Widget<Message, Rend
                             }
                             magnitude /= channels as f32;
 
-                            let bin_x = remap_rect_x_t(&bounds, normalize_log10(bin_index as f32 + 2.0, 2.0, bins as f32 + 2.0));
+                            let bin_x = remap_rect_x_t(&bounds, normalize_logarithmic(bin_index as f32 + 2.0, 2.0, bins as f32 + 2.0));
                             let bin_width = bin_x - prev_bin_x;
                             let x_pos = prev_bin_x + bin_width / 2.0; // center point
                             prev_bin_x = bin_x;

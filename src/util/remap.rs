@@ -10,8 +10,8 @@ where
 }
 
 #[inline]
-pub fn normalize_log10<S: Float>(value: S, min: S, max: S) -> S {
-    (value / min).log10() / (max / min).log10()
+pub fn normalize_logarithmic<S: Float>(value: S, min: S, max: S) -> S {
+    (value / min).ln() / (max / min).ln()
 }
 
 #[inline]
@@ -25,9 +25,9 @@ where
 }
 
 #[inline]
-pub fn normalize_log10_ranged<S: Float, R: RangeBounds<S>>(value: S, range: &R) -> S {
+pub fn normalize_logarithmic_ranged<S: Float, R: RangeBounds<S>>(value: S, range: &R) -> S {
     let (min, max) = range_bounds(range);
-    normalize_log10(value, min, max)
+    normalize_logarithmic(value, min, max)
 }
 
 #[inline]
@@ -39,8 +39,8 @@ where
 }
 
 #[inline]
-pub fn map_normalized_log10<S: Float>(normalized_value: S, target_min: S, target_max: S) -> S {
-    target_min * S::from(10).unwrap().powf(normalized_value * (target_max / target_min).log10())
+pub fn map_normalized_logarithmic<S: Float>(normalized_value: S, target_min: S, target_max: S) -> S {
+    target_min * (normalized_value * (target_max / target_min).ln()).exp()
 }
 
 #[inline]
@@ -54,9 +54,9 @@ where
 }
 
 #[inline]
-pub fn map_normalized_log10_ranged<S: Float, R: RangeBounds<S>>(normalized_value: S, target_range: &R) -> S {
+pub fn map_normalized_logarithmic_ranged<S: Float, R: RangeBounds<S>>(normalized_value: S, target_range: &R) -> S {
     let (min, max) = range_bounds(target_range);
-    map_normalized_log10(normalized_value, min, max)
+    map_normalized_logarithmic(normalized_value, min, max)
 }
 
 #[inline]
