@@ -161,8 +161,9 @@ impl Plugin for FreqChain {
             }
         }
 
+        let smoothed_gain = self.params.sidechain_input.gain.smoothed.next();
         sidechain_buffer.on_each(|_, _, sidechain_sample| {
-            *sidechain_sample *= self.params.sidechain_input.gain.smoothed.next();
+            *sidechain_sample *= smoothed_gain;
         });
 
         self.equalizer.process(sidechain_buffer, &self.params.equalizer);
@@ -221,13 +222,12 @@ impl Default for SidechainInputParams {
         Self {
             solo: BoolParam::new("Sidechain Input Solo", false),
             gain: FloatParam::new(
-                "Sidechain Input Gain",
+                "Sidechain Input Level",
                 util::db_to_gain(0.0),
-                gain_range_from_db(util::MINUS_INFINITY_DB, 24.0),
+                gain_range_from_db(-24.0, 24.0, 0.0),
             )
             // Smooth the gain parameter logarithmically because it is in linear gain
-            // TODO: test w/ & w/o smoothing
-            .with_smoother(SmoothingStyle::Logarithmic(50.0))
+            .with_smoother(SmoothingStyle::Logarithmic(10.0))
             .with_unit("dB") // Unit suffix to parameter display
             // Set value transformers for display
             .with_value_to_string(formatters::v2s_f32_gain_to_db(1))

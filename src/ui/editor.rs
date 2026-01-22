@@ -19,7 +19,6 @@ use nih_plug_iced::{alignment, assets, create_iced_editor, executor, Alignment, 
 use realfft::num_complex::Complex32;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use crate::util::gain_range_from_db;
 
 const EDITOR_WIDTH: u32 = 1000;
 const EDITOR_HEIGHT: u32 = 572;
@@ -184,8 +183,8 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
             &mut self.sidechain_gain_state,
             &self.params.sidechain_input.gain
         )
-            .label("Gain")
-            .style(self.theme.slider(gain_range_from_db(util::MINUS_INFINITY_DB, 24.0).normalize(util::db_to_gain(0.0))))
+            .label("Level")
+            .style(self.theme.slider(self.params.sidechain_input.gain.preview_normalized(util::db_to_gain(0.0))))
             .width(26.into())
             .height(Length::Fill)
             .map(Message::ParamUpdate);
@@ -387,11 +386,11 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
             // .explain(Color::from_rgb8(0, 0, 255))
             ;
 
-        let band_gain = ParamSlider::new(
+        let band_level = ParamSlider::new(
             &mut self.band_gain_state,
-            &active_band.db
+            &active_band.level
         )
-            .label("Gain")
+            .label("Level")
             .style(self.theme.slider(0.5))
             .width(26.into())
             .height(Length::Fill)
@@ -484,7 +483,7 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
             .height(Length::Fill)
             .align_items(Alignment::Center)
             .push(equalizer_label)
-            .push(band_gain)
+            .push(band_level)
             .push(Space::with_width(8.into()))
             .push(Column::new()
                 .width(Length::Fill)

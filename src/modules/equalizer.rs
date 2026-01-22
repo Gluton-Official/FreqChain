@@ -33,7 +33,7 @@ pub struct BandParams {
     #[id = "q"]
     pub q: FloatParam,
     #[id = "db"]
-    pub db: FloatParam,
+    pub level: FloatParam,
     #[id = "bypass"]
     pub bypass: BoolParam,
 
@@ -98,7 +98,7 @@ impl<const BANDS: usize, const CHANNELS: usize> Equalizer<BANDS, CHANNELS> {
                     if matches!(
                         band_params.band_type.value(),
                         BandType::Peak | BandType::HighShelf | BandType::LowShelf
-                    ) && band_params.db.value() == 0_f32 {
+                    ) && band_params.level.value() == 0_f32 {
                         continue;
                     }
 
@@ -167,8 +167,8 @@ impl BandParams {
                     let dirty = dirty.clone();
                     move |_| dirty.store(true, Ordering::SeqCst)
                 })),
-            db: FloatParam::new(
-                format!("{band_name} Gain"),
+            level: FloatParam::new(
+                format!("{band_name} Level"),
                 db,
                 FloatRange::Linear { min: -18.0, max: 18.0 },
             )
@@ -196,7 +196,7 @@ impl BandParams {
         match self.band_type.value() {
             BandType::Peak => {
                 // linear gain
-                let A = 10_f32.powf(self.db.value() / 40_f32);
+                let A = 10_f32.powf(self.level.value() / 40_f32);
                 let a0 = 1_f32 + alpha / A;
                 BiquadFilter {
                     b0:  (1_f32 + alpha * A) / a0,
@@ -217,7 +217,7 @@ impl BandParams {
                 }
             }
             BandType::HighShelf => {
-                let A = 10_f32.powf(self.db.value() / 40_f32);
+                let A = 10_f32.powf(self.level.value() / 40_f32);
                 let sqrt_A_alpha_2 = 2_f32 * A.sqrt() * alpha;
                 let a0 = (A + 1_f32) - (A - 1_f32) * cos_w0 + sqrt_A_alpha_2;
                 BiquadFilter {
@@ -229,7 +229,7 @@ impl BandParams {
                 }
             }
             BandType::LowShelf => {
-                let A = 10_f32.powf(self.db.value() / 40_f32);
+                let A = 10_f32.powf(self.level.value() / 40_f32);
                 let sqrt_A_alpha_2 = 2_f32 * A.sqrt() * alpha;
                 let a0 = (A + 1_f32) + (A - 1_f32) * cos_w0 + sqrt_A_alpha_2;
                 BiquadFilter {
