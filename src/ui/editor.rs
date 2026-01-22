@@ -421,7 +421,6 @@ impl<const CHANNELS: usize, const WINDOW_SIZE: usize> IcedEditor for FreqChainEd
             // .explain(Color::from_rgb8(255, 255, 0))
             ;
 
-        // TODO: add padding to these toggles
         let low_shelf_toggle = ParamToggle::new(
             &active_band.band_type,
         )

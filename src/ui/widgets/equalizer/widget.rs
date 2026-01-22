@@ -542,9 +542,6 @@ impl<'a, const BANDS: usize> Equalizer<'a, BANDS> {
                         drag_state.stop_granular(cursor_position);
                     }
 
-                    // TODO: dragging halfway across the eq's frequency range results in a normalized value of 0.5,
-                    //       which is 2.5kHz based on the FloatParam's skew factor, even though 2.5kHz is closer to
-                    //       0.666 based on frequency_to_x's normalization
                     let normalized_vector = drag_state.value(*bounds, cursor_position);
                     self.set_normalized_value(shell, &band_params.frequency, normalized_vector.x);
                     self.set_normalized_value(shell, &band_params.level, normalized_vector.y);
